@@ -19,13 +19,13 @@ sealed class ClipboardModule:IDisposable {
  [DllImport("kernel32.dll")]static extern IntPtr GlobalLock(IntPtr handle);
  [DllImport("kernel32.dll")]static extern bool GlobalUnlock(IntPtr handle);
  readonly DispatcherTimer retry=new(){Interval=TimeSpan.FromMilliseconds(120)};HwndSource? source;IntPtr hwnd;int attempts;uint exclude,allow,png,ownSequence;bool active,writing;
- public readonly CopyHistory History=new();public event Action? Changed;public string Status {get;private set;}="Désactivé";
+ public readonly CopyHistory History=new();public event Action? Changed;public string Status {get;private set;}="Disabled";
  public ClipboardModule(){retry.Tick+=(_,_)=>{retry.Stop();Read();};}
  public void Enable(IntPtr window,bool value){
   if(active==value)return;
-  if(!value){active=false;retry.Stop();if(hwnd!=IntPtr.Zero)RemoveClipboardFormatListener(hwnd);source?.RemoveHook(Hook);source=null;History.Clear();Status="Désactivé";Changed?.Invoke();return;}
-  hwnd=window;source=HwndSource.FromHwnd(hwnd);if(source==null||!AddClipboardFormatListener(hwnd)){Status="Presse-papiers indisponible";Changed?.Invoke();return;}
-  exclude=RegisterClipboardFormat("ExcludeClipboardContentFromMonitorProcessing");allow=RegisterClipboardFormat("CanIncludeInClipboardHistory");png=RegisterClipboardFormat("PNG");source.AddHook(Hook);active=true;Status="Activé · texte, images et fichiers";Changed?.Invoke();
+  if(!value){active=false;retry.Stop();if(hwnd!=IntPtr.Zero)RemoveClipboardFormatListener(hwnd);source?.RemoveHook(Hook);source=null;History.Clear();Status="Disabled";Changed?.Invoke();return;}
+  hwnd=window;source=HwndSource.FromHwnd(hwnd);if(source==null||!AddClipboardFormatListener(hwnd)){Status="Clipboard unavailable";Changed?.Invoke();return;}
+  exclude=RegisterClipboardFormat("ExcludeClipboardContentFromMonitorProcessing");allow=RegisterClipboardFormat("CanIncludeInClipboardHistory");png=RegisterClipboardFormat("PNG");source.AddHook(Hook);active=true;Status="Enabled · text, images and files";Changed?.Invoke();
  }
  IntPtr Hook(IntPtr window,int message,IntPtr w,IntPtr l,ref bool handled){if(active&&message==0x031D){if(writing||GetClipboardSequenceNumber()==ownSequence)return IntPtr.Zero;attempts=0;retry.Stop();Read();}return IntPtr.Zero;}
  void Read(){
@@ -41,7 +41,7 @@ sealed class ClipboardModule:IDisposable {
     try{string text=Marshal.PtrToStringUni(data,(int)bytes/2)??"";int end=text.IndexOf('\0');item=CopyItem.FromText(end<0?text:text[..end]);}finally{GlobalUnlock(handle);}
    }
    History.Add(item);
-  }catch(Exception error)when(error is ExternalException or ArgumentException or InvalidOperationException or NotSupportedException or IOException){Status="Cette copie n’a pas pu être ajoutée.";}
+  }catch(Exception error)when(error is ExternalException or ArgumentException or InvalidOperationException or NotSupportedException or IOException){Status="This item could not be added.";}
   finally{CloseClipboard();}Changed?.Invoke();
  }
  [DllImport("shell32.dll",CharSet=CharSet.Unicode)]static extern uint DragQueryFile(IntPtr drop,uint index,StringBuilder? path,uint length);

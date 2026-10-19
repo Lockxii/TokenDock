@@ -14,6 +14,7 @@ namespace TokenDock;
 static class Entry {
  [STAThread] public static void Main(string[] args){
   var app=new Application();
+  if(args.Length==2&&args[0]=="--demo"){MediaDemo.Run(args[1]);app.Shutdown();return;}
   if(args.Contains("--check")){Checks.Run();app.Shutdown();return;}
   using var mutex=new Mutex(true,"Local\\TokenDock.Next",out bool first);if(!first)return;
   app.Run(new NotchWindow());
@@ -34,7 +35,7 @@ sealed class NotchWindow:Window {
   AllowDrop=true;surface.AllowDrop=true;
   void AcceptFileDrag(object sender,DragEventArgs e){if(!preferences.ClipboardHistory||!e.Data.GetDataPresent(DataFormats.FileDrop,true))return;reveal.Stop();close.Stop();if(surface.ActiveModule!="clipboard")surface.ShowModule("clipboard",CreateModule("clipboard"));surface.Expand(true);e.Effects=(e.AllowedEffects&DragDropEffects.Copy);e.Handled=true;}
   PreviewDragEnter+=AcceptFileDrag;PreviewDragOver+=AcceptFileDrag;
-  PreviewDrop+=async(_,e)=>{if(!preferences.ClipboardHistory||!e.Data.GetDataPresent(DataFormats.FileDrop,true))return;e.Handled=true;e.Effects=DragDropEffects.Copy;try{if(e.Data.GetData(DataFormats.FileDrop,true) is string[] files){var error=await clipboard.StoreFiles(files);if(error!=null)tray?.ShowBalloonTip(4000,"Dépôt impossible",error,Forms.ToolTipIcon.Warning);}}catch(Exception error)when(error is ExternalException or IOException or ArgumentException){tray?.ShowBalloonTip(4000,"Dépôt impossible",error.Message,Forms.ToolTipIcon.Warning);}};
+  PreviewDrop+=async(_,e)=>{if(!preferences.ClipboardHistory||!e.Data.GetDataPresent(DataFormats.FileDrop,true))return;e.Handled=true;e.Effects=DragDropEffects.Copy;try{if(e.Data.GetData(DataFormats.FileDrop,true) is string[] files){var error=await clipboard.StoreFiles(files);if(error!=null)tray?.ShowBalloonTip(4000,"Unable to add files",error,Forms.ToolTipIcon.Warning);}}catch(Exception error)when(error is ExternalException or IOException or ArgumentException){tray?.ShowBalloonTip(4000,"Unable to add files",error.Message,Forms.ToolTipIcon.Warning);}};
   DragLeave+=(_,_)=>{if(!pinned)close.Start();};
   surface.MouseEnter+=(_,_)=>{close.Stop();if(!dragging&&!surface.IsIconDrag)reveal.Start();};surface.MouseLeave+=(_,_)=>{hoverCandidate=null;reveal.Stop();if(!dragging&&!surface.IsIconDrag&&!pinned&&surface.ContextMenu?.IsOpen!=true)close.Start();};
   reveal.Tick+=(_,_)=>{reveal.Stop();if(!dragging&&!surface.IsIconDrag){surface.SelectHover(Mouse.GetPosition(surface));if(!surface.TryOpenModule(Mouse.GetPosition(surface),CreateModule))surface.TryOpenMusicPreview(Mouse.GetPosition(surface),()=>CreateModule("music"));surface.Expand(true);}};close.Tick+=(_,_)=>{close.Stop();surface.Expand(false);};
@@ -44,7 +45,7 @@ sealed class NotchWindow:Window {
   surface.LostMouseCapture+=(_,_)=>{if(surface.IsIconDrag){surface.CancelIconDrag();if(!pinned&&!surface.IsMouseOver)close.Start();return;}if(!dragging)return;dragging=false;if(moved){pinned=false;FinishMove(PointToScreen(Mouse.GetPosition(this)));}};
   KeyDown+=(_,e)=>{if(e.Key==Key.Escape){if(surface.IsIconDrag){surface.CancelIconDrag();surface.ReleaseMouseCapture();e.Handled=true;return;}surface.CloseModule();pinned=false;surface.Expand(false);}if(e.Key==Key.F1){pinned=!pinned;surface.Expand(pinned);}};
   var menu=BuildMenu();surface.ContextMenu=menu;
-  tray=new Forms.NotifyIcon{Icon=trayIcon,Text="TokenDock · Double-clic pour afficher",Visible=true};var tm=new Forms.ContextMenuStrip();tm.Items.Add("Afficher",null,(_,_)=>Dispatcher.Invoke(()=>{Show();Place();}));tm.Items.Add("Personnaliser…",null,(_,_)=>Dispatcher.Invoke(()=>ShowTool("settings")));tm.Items.Add("Quitter",null,(_,_)=>Dispatcher.Invoke(Close));tray.ContextMenuStrip=tm;tray.DoubleClick+=(_,_)=>Dispatcher.Invoke(()=>{Show();Place();});
+  tray=new Forms.NotifyIcon{Icon=trayIcon,Text="TokenDock · Double-click to show",Visible=true};var tm=new Forms.ContextMenuStrip();tm.Items.Add("Show",null,(_,_)=>Dispatcher.Invoke(()=>{Show();Place();}));tm.Items.Add("Customize…",null,(_,_)=>Dispatcher.Invoke(()=>ShowTool("settings")));tm.Items.Add("Quit",null,(_,_)=>Dispatcher.Invoke(Close));tray.ContextMenuStrip=tm;tray.DoubleClick+=(_,_)=>Dispatcher.Invoke(()=>{Show();Place();});
   monitor.Start();poll.Tick+=(_,_)=>Update();poll.Start();Update();
   IsVisibleChanged+=(_,_)=>surface.Running=IsVisible;Closed+=(_,_)=>{closed=true;Save();poll.Stop();reveal.Stop();close.Stop();surface.Running=false;surface.CloseModule();monitor.Changed-=QueueLiveRefresh;feeds.Changed-=QueueLiveRefresh;music.Changed-=UpdateMusicPreview;monitor.Dispose();feeds.Dispose();clipboard.Dispose();music.Dispose();foreach(var panel in panels.Values.ToArray())panel.Close();tray.Dispose();trayIcon.Dispose();};
  }
@@ -53,7 +54,7 @@ sealed class NotchWindow:Window {
   menu.Opened+=(_,_)=>{close.Stop();reveal.Stop();};
   menu.Closed+=(_,_)=>{if(!pinned&&!surface.IsMouseOver)close.Start();};return menu;
  }
- void SaveIconOrder(IconDrop drop){var next=preferences.Copy();next.MoveItem(drop.Source,drop.Target,drop.After);if(next.Layout.SequenceEqual(preferences.Layout))return;try{next.Save();ApplyPreferences(next);}catch(Exception error)when(error is IOException or UnauthorizedAccessException){tray.ShowBalloonTip(3500,"TokenDock","Ordre non enregistré. Réessaie après avoir vérifié l’accès aux réglages.",Forms.ToolTipIcon.Warning);}}
+ void SaveIconOrder(IconDrop drop){var next=preferences.Copy();next.MoveItem(drop.Source,drop.Target,drop.After);if(next.Layout.SequenceEqual(preferences.Layout))return;try{next.Save();ApplyPreferences(next);}catch(Exception error)when(error is IOException or UnauthorizedAccessException){tray.ShowBalloonTip(3500,"TokenDock","Could not save the order. Check access to settings and try again.",Forms.ToolTipIcon.Warning);}}
  Meter[] Snapshot()=>monitor.Snapshot().Concat(feeds.Snapshot()).ToArray();
  void UpdateMusicPreview(){if(!closed)surface.SetNowPlaying(music);}
  void QueueLiveRefresh(){
@@ -76,7 +77,7 @@ sealed class NotchWindow:Window {
   }
   if(panels.TryGetValue(kind,out var current)){current.Activate();return;}
   ToolPanelWindow? panel=null;UIElement view=new PersonalizationView(preferences,ApplyPreferences,()=>panel?.Close(),Snapshot);
-  panel=new ToolPanelWindow("Personnaliser",view){Owner=this};panels[kind]=panel;
+  panel=new ToolPanelWindow("Customize",view){Owner=this};panels[kind]=panel;
   panel.Closed+=(_,_)=>{if(view is IDisposable disposable)disposable.Dispose();panels.Remove(kind);};panel.Show();
  }
  async void Update(){

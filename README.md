@@ -1,174 +1,182 @@
+<div align="center">
+
 # TokenDock
 
-**Une barre Windows personnalisable pour les tokens IA, la musique, les copies, la caméra et la RAM.**
+**Your AI usage, music, clipboard, camera and memory. One small Windows dock.**
 
-TokenDock se place en haut, en bas, sur un côté ou librement sur l’écran. Survole une icône pour ouvrir son panneau, glisse les éléments pour les réordonner, et garde les informations utiles à portée de souris.
+[Download](https://github.com/Lockxii/TokenDock/releases/latest) · [AI customization guide](docs/AI_GUIDE.md) · [Report a bug](https://github.com/Lockxii/TokenDock/issues)
 
-Application native **C# / WPF / .NET 10**, sans navigateur embarqué. Version initiale publique : **v0.1.0**, issue de la version de développement v41. Projet en évolution : les tests automatisés ne remplacent pas la validation avec chaque webcam, lecteur multimédia et configuration d’écran.
+![Build](https://github.com/Lockxii/TokenDock/actions/workflows/build.yml/badge.svg)
+![Windows](https://img.shields.io/badge/platform-Windows-9addbd)
+![.NET 10](https://img.shields.io/badge/.NET-10-8c83ca)
+![MIT](https://img.shields.io/badge/license-MIT-9addbd)
 
-[**Télécharger pour Windows**](https://github.com/Lockxii/TokenDock/releases/latest) · [Modifier avec une IA](docs/AI_GUIDE.md) · [Contribuer](CONTRIBUTING.md) · [Signaler un problème](https://github.com/Lockxii/TokenDock/issues)
+![Everything, one glance](docs/media/hero.png)
 
-## Sommaire
+</div>
+
+A native **C# / WPF / .NET 10** desktop app with no embedded browser. Dock it to any screen edge or leave it floating. Hover to expand, drag to reorder, and keep the things you use close.
+
+## See it in motion
+
+![Side dock and module transitions](docs/media/transitions.gif)
+
+*Actual Windows components, fictional data. The GIF illustrates opening and module changes with scripted timing, not a desktop recording or performance benchmark. No private camera, clipboard or session data was used.*
+
+<table>
+<tr><td><img src="docs/media/music.png" alt="Music with sample artwork"><b>Music, within reach.</b><br>Playback without another window.</td><td><img src="docs/media/clipboard.png" alt="Clipboard with sample content"><b>Copy. Keep. Drop.</b><br>Files and ideas, ready to use.</td></tr>
+<tr><td><img src="docs/media/camera.png" alt="Circular camera with fictional illustration"><b>One photo. Straight to Clipboard.</b><br>A round PNG you can drag elsewhere.</td><td><img src="docs/media/ram.png" alt="Memory panel with sample readings"><b>A cat with a purpose.</b><br>Memory pressure at a glance.</td></tr>
+</table>
+
+## Platform status
+
+| Platform | Status |
+| --- | --- |
+| Windows 10 2004+ / Windows 11, x64 | Available; self-contained download |
+| Linux | Not available; full feature parity required before release |
+| macOS | Not available; full feature parity required before release |
+
+**The current app is Windows-only.** WPF, media and capture integrations need a real port. A token-only prototype will not be presented as a complete release. See the [Linux/macOS parity requirements](docs/PLATFORMS.md). No Linux/macOS binaries are available yet.
+
+## Contents
 
 - [Installation](#installation)
-- [Premiers pas](#premiers-pas)
+- [Quick start](#quick-start)
 - [Modules](#modules)
-- [Personnalisation](#personnalisation)
-- [Données et confidentialité](#données-et-confidentialité)
-- [Compiler et vérifier](#compiler-et-vérifier)
-- [Modifier avec une IA](#modifier-avec-une-ia)
-- [Dépannage](#dépannage)
+- [Customization](#customization)
+- [Privacy and local data](#privacy-and-local-data)
+- [Build and test](#build-and-test)
+- [Modify with an AI assistant](#modify-with-an-ai-assistant)
+- [Troubleshooting](#troubleshooting)
 - [Architecture](#architecture)
-- [Limites et licence](#limites-et-licence)
+- [Contributing and license](#contributing-and-license)
 
 ## Installation
 
-### Prérequis
+### Download and run
 
-- Windows 10 version 2004 ou ultérieure, ou Windows 11.
-- Processeur **x64** pour l’archive publiée. Pas de version macOS/Linux.
-- Une webcam pour le module Caméra et un lecteur exposant les commandes multimédias Windows pour Musique.
-- Aucun compte TokenDock, clé API ou abonnement requis pour l’application.
+1. Open the [latest release](https://github.com/Lockxii/TokenDock/releases/latest).
+2. Download its **Windows x64 ZIP** and optionally `SHA256SUMS.txt`.
+3. **Extract the entire archive** into a writable folder, such as `Documents\Applications\TokenDock`.
+4. Run **`TokenDock.Next.exe`** from the extracted folder.
 
-### Installer la version prête à utiliser
+The ZIP includes .NET. No separate runtime, account, API key or subscription is required. Keep the executable, DLLs and `assets/` together; do not run from inside the ZIP.
 
-1. Ouvre la [dernière release](https://github.com/Lockxii/TokenDock/releases/latest).
-2. Télécharge `TokenDock-v0.1.0-win-x64.zip` et, si souhaité, `SHA256SUMS.txt`.
-3. **Extrais tout le ZIP** dans un dossier où tu peux écrire, par exemple `Documents\Applications\TokenDock`.
-4. Lance `TokenDock.Next.exe` depuis le dossier extrait. Ne lance pas directement depuis l’archive et ne déplace pas uniquement l’exécutable : les bibliothèques et `assets/` doivent rester ensemble.
-5. L’archive autonome contient .NET : aucun runtime à installer séparément.
+Requirements: Windows 10 version 2004 or later, or Windows 11, on x64. Camera needs a webcam; music needs a player exposing a Windows media session. The executable is unsigned: verify its origin/checksum before deciding to accept a Windows reputation warning. Do not disable security globally. Run normally, **not as administrator**.
 
-Le binaire n’est pas signé. Windows peut afficher un avertissement de réputation : vérifie la provenance de la release et son empreinte avant de décider de l’exécuter. Ne désactive pas globalement les protections Windows. Lance l’application normalement, **pas en administrateur**.
-
-Vérifier une archive dans PowerShell :
+Verify a download, substituting its actual filename:
 
 ```powershell
-Get-FileHash .\TokenDock-v0.1.0-win-x64.zip -Algorithm SHA256
+Get-FileHash .\TokenDock-v0.2.0-win-x64.zip -Algorithm SHA256
 ```
 
-Compare le résultat à la ligne correspondante dans `SHA256SUMS.txt`.
+Compare the hash with `SHA256SUMS.txt`.
 
-### Mettre à jour
+### Update or uninstall
 
-1. Menu de la barre ou icône de notification → **Quitter**.
-2. Extrais la nouvelle version dans un nouveau dossier.
-3. Lance le nouvel exécutable. Les préférences sont conservées dans `%LOCALAPPDATA%\TokenDock`.
+Quit the previous instance using the dock menu or tray icon. Extract the new version into a new folder and launch it. Settings remain in `%LOCALAPPDATA%\TokenDock`. Only one instance runs at a time; a new executable does not replace one already running.
 
-Une seule instance peut fonctionner à la fois. Ouvrir une autre version pendant que l’ancienne tourne ne la remplace pas.
+To uninstall, quit and delete the app folder. To reset settings, back up anything needed and remove `%LOCALAPPDATA%\TokenDock`. Photos in `Pictures\TokenDock` remain until removed separately. No service or startup entry is installed.
 
-### Désinstaller
+## Quick start
 
-Quitte TokenDock, puis supprime son dossier extrait. Pour réinitialiser également les réglages, supprime le dossier `%LOCALAPPDATA%\TokenDock` après avoir sauvegardé ce que tu souhaites conserver. Les photos dans `Images\TokenDock` restent indépendantes ; ne les supprime que si tu n’en as plus besoin. Aucun démarrage automatique ni service Windows n’est ajouté.
+| Gesture | Action |
+| --- | --- |
+| Hover an icon | Open its panel after 60 ms |
+| Click a module | Keep its panel open |
+| Right-click | Position, customize, hide, reset tokens or quit |
+| Drag an icon | Reorder it directly |
+| Drag empty dock space | Move the entire dock, including free placement |
+| Escape | Cancel icon drag or close the panel |
+| F1 with dock focus | Expand/collapse; not a global shortcut |
+| Double-click tray icon | Restore a hidden dock; check hidden notification icons |
 
-## Premiers pas
-
-- **Survol** d’une icône : ouvre le panneau après un court délai (60 ms).
-- **Clic** sur un module : maintient son panneau ouvert.
-- **Clic droit** : position, Personnaliser, masquer, réinitialiser les tokens ou quitter.
-- **Glisser une icône** : change son ordre directement dans la barre.
-- **Glisser un espace vide** : déplace la barre entière. Elle peut rester au milieu de l’écran.
-- **Échap** : annule un déplacement d’icône ou ferme le panneau.
-- **F1**, quand la barre a le focus : ouvre/replie le panneau ; ce n’est pas un raccourci global.
-- Barre masquée : **double-clique l’icône TokenDock dans la zone de notification Windows**, éventuellement dans les icônes cachées.
+Interrupted animations preserve their motion. Windows' reduced-animation preference is respected.
 
 ## Modules
 
-### Tokens : Codex, Claude Code, OpenCode
+### AI token usage
 
-Les compteurs lisent les données locales publiées par les outils. Ils ne représentent ni une facture, ni un quota d’abonnement, ni un compteur universel de toute l’activité du compte.
+Built-in **Codex, Claude Code and OpenCode** readers, plus up to three custom JSON sources.
 
-| Source | Emplacement lu |
+| Tool | Local source |
 | --- | --- |
-| Codex | `%USERPROFILE%\.codex\sessions` ; variable `CODEX_HOME` prise en compte |
-| Claude Code | `%USERPROFILE%\.claude\projects` ; variable `CLAUDE_CONFIG_DIR` prise en compte |
-| OpenCode | `%USERPROFILE%\.local\share\opencode\opencode.db` ; variable `XDG_DATA_HOME` prise en compte |
+| Codex | `%USERPROFILE%\.codex\sessions`; respects `CODEX_HOME` |
+| Claude Code | `%USERPROFILE%\.claude\projects`; respects `CLAUDE_CONFIG_DIR` |
+| OpenCode | `%USERPROFILE%\.local\share\opencode\opencode.db`; respects `XDG_DATA_HOME` |
 
-Codex et Claude utilisent les journaux JSONL ; OpenCode est interrogé en SQLite **lecture seule**, environ une fois par seconde. Les chemins et formats des outils peuvent évoluer.
+Codex/Claude use JSONL; OpenCode uses **read-only SQLite**, checked about once per second. Formats may change independently.
 
-- Les compteurs suivent les événements disponibles pendant l’utilisation ; ils ne reconstituent pas tout l’historique avant le lancement.
-- L’interface distingue entrée, sortie et cache lorsque ces valeurs sont disponibles.
-- Le graphe fournit des informations au survol.
-- La vue globale additionne les outils visibles ; sélectionner une plateforme affiche son détail.
-- **Pas de promesse de token par token** : si l’outil publie son usage en fin de réponse, TokenDock ne peut pas connaître les tokens intermédiaires.
-- Réinitialiser remet les compteurs de TokenDock à zéro, sans modifier les fichiers des outils.
+- Input, output and cache readings where available, plus graph hover details.
+- Combined totals for visible tools, or details for a selected provider.
+- Reset changes TokenDock's counters, never source files.
+- New events are followed; full account history before launch is not reconstructed.
+- These are local readings, **not billing, quotas or account-wide totals**.
+- Not guaranteed token-by-token streaming: if a tool reports usage only after a response, intermediate values are unavailable.
 
-### Musique
+### Music
 
-Pochette et titre dans la barre repliée, lecteur intégré au survol, lecture/pause, précédent/suivant et progression. Certaines applications ne publient pas de durée, de pochette ou de commandes compatibles : les fonctions disponibles dépendent du lecteur Windows actif.
+Artwork/title when collapsed; playback, previous/next and seeking when expanded. Windows chooses the active session. Features depend on what the player exposes; missing duration or artwork is possible.
 
-### Copies et fichiers temporaires
+### Clipboard and temporary files
 
-À activer dans Personnaliser. L’historique du presse-papiers est **local, en mémoire et limité à 20 cartes** : texte, images et fichiers. Il commence après activation, sans import initial du presse-papiers.
+Enable Clipboard in Customize for **local, in-memory history**, limited to 20 cards. It starts after activation without importing old clipboard content.
 
-- Clique une carte pour copier ; une coche confirme la réussite.
-- Glisse des fichiers sur la barre pour les déposer dans Copies.
-- Les fichiers déposés sont copiés dans un stockage temporaire ; les originaux ne sont pas déplacés.
-- Glisse une carte de fichiers vers l’Explorateur ou une application qui accepte les fichiers.
-- La croix apparaît au survol ou au focus clavier pour retirer une seule carte.
-- **Effacer** retire les cartes. Les copies temporaires restent jusqu’à la fermeture normale pour ne pas invalider un transfert en cours.
-- Limites : 100 fichiers par dépôt, 256 Mo de stockage temporaire par session ; dossiers et points de réanalyse refusés. Texte : 32 768 caractères ; images : environ 4 millions de pixels ; budget mémoire d’historique : 32 Mio.
+- Click to copy; a checkmark confirms success.
+- Drop regular files onto the dock for independent temporary copies.
+- Drag file cards into Explorer or an app accepting files.
+- Hover/focus a card to reveal its removal cross.
+- Clear removes cards. Temporary files remain until normal exit to preserve in-progress transfers.
 
-Un arrêt brutal peut laisser des fichiers temporaires dans `%TEMP%\TokenDock-shelf`. Aucun nettoyage des fichiers d’origine n’est effectué. L’historique ne survit pas au redémarrage.
+Limits: 100 files per drop, 256 MB temporary storage per session, no directories/reparse points. Text: 32,768 characters; images: roughly 4 million pixels; retained payloads: 32 MiB. Originals are never moved/deleted. History resets on restart; crashes may leave files under `%TEMP%\TokenDock-shelf`.
 
-### Caméra et photos
+### Camera and photos
 
-Ajoute **Caméra** dans Personnaliser, puis Appliquer. Le panneau utilise la caméra couleur par défaut.
+Add Camera and apply. The default color camera runs **only while its panel is open and visible**. Collapsing, hiding, switching modules or quitting releases capture. No microphone, video recording or upload.
 
-- Caméra activée uniquement pendant que son panneau est ouvert et visible.
-- Repli, masquage, changement de module ou fermeture libèrent la capture.
-- Aucun microphone, enregistrement vidéo ou envoi réseau.
-- Aperçu circulaire ; largeur de capture demandée au plus 640 pixels, ratio de la caméra conservé ; affichage plafonné à environ 15 images/s.
-- Le déclencheur enregistre un **PNG rond avec transparence**, recadré comme l’aperçu, dans `Images\TokenDock`.
-- **Copies s’ouvre immédiatement**, photo en premier et panneau maintenu ouvert. Tu peux copier ou glisser le PNG ailleurs.
-- Copies devient accessible avec Caméra sans activer implicitement l’écoute de tout le presse-papiers.
-- Retirer la carte ne supprime pas la photo enregistrée.
+The preview requests at most 640 pixels wide with the source ratio, updating around 15 frames/s. The shutter saves a **circular transparent PNG** with the preview's crop in the system Pictures folder under `TokenDock`.
 
-Le respect de la transparence lors du collage dépend de l’application de destination ; le fichier PNG conserve son canal alpha.
+**Clipboard opens automatically with the photo first**, pinned open for copying/dragging. Camera makes Clipboard accessible without enabling background clipboard history. Removing a card does not delete the saved photo. Some destinations flatten pasted bitmaps; dragging the PNG preserves its alpha channel.
 
-### Chat et RAM
+### Cat and RAM
 
-Le chat indique la **RAM physique disponible**, pas seulement la mémoire totalement inutilisée. Il court plus vite lorsque la mémoire disponible diminue.
+The cat represents **available physical RAM**, not only unused pages. It runs faster as availability falls. Customize orange/red thresholds and speed (0.25×–2×), with a simulated-RAM preview that does not change real memory. The panel shows major memory consumers where process data is accessible.
 
-Dans Personnaliser → Chat · RAM : seuil orange, seuil rouge, vitesse de 0,25× à 2×, RAM simulée avec aperçu animé. Les couleurs évoluent progressivement sous les seuils. Les valeurs simulées ne modifient pas la mémoire réelle. Le panneau RAM affiche aussi les principaux consommateurs lorsque leurs informations sont accessibles.
+## Customization
 
-## Personnalisation
+Open **right-click → Customize**.
 
-Ouvre le menu clic droit → **Personnaliser**.
+<img src="docs/media/customize.png" alt="English customization editor" width="492">
 
-- Glisse les éléments de la palette dans l’aperçu, mélange outils, musique, copies, caméra et chat.
-- Glisse vers la zone de retrait pour masquer un élément ; les réglages du chat et les options de compteur sont séparés.
-- L’orientation de l’aperçu sert à composer la barre ; la position réelle se choisit dans le menu de la barre.
-- Active/désactive compteur supérieur, pochette et titre compact.
-- **Appliquer** sauvegarde ; **Annuler** abandonne le brouillon. Le réordre directement dans la barre est, lui, enregistré immédiatement.
-- Quand Caméra est activée, Copies reste disponible pour recevoir les photos.
+Drag elements in/out of the preview and freely mix tools/modules. Preview orientation helps composition; screen position comes from the dock menu. Configure counter, artwork, compact title and cat behavior. **Apply** saves; **Cancel** discards the draft. Direct dock reordering saves immediately. Clipboard remains accessible with Camera enabled.
 
-### Ajouter une source de tokens JSON
+### Custom JSON source
 
-Options → nom de la source → **Connecter** → sélectionne un fichier JSON local. Trois sources personnalisées maximum. Exemple :
+Options → source name → **Connect** → local JSON file:
 
 ```json
 {"input":120,"output":45,"cache":0}
 ```
 
-Les nombres sont des compteurs cumulés mis à jour par ton intégration. Donner un nom à une source ne connecte pas automatiquement un outil. TokenDock lit le fichier ; un script externe doit publier les valeurs réelles. Utilise de préférence une écriture dans un fichier temporaire puis un remplacement atomique pour éviter les lectures partielles. Voir [l’exemple](custom-usage.example.json) et `CustomFeeds` dans [Personalization.cs](next/Personalization.cs).
+These are cumulative counters supplied by your integration. A name alone does not connect a tool. Publish real usage with a script, preferably by atomic replacement to avoid partial reads. See [the example](custom-usage.example.json) and `CustomFeeds` in [Personalization.cs](next/Personalization.cs).
 
-## Données et confidentialité
+## Privacy and local data
 
-| Donnée | Emplacement / comportement |
+| Data | Location / handling |
 | --- | --- |
-| Préférences et position | `%LOCALAPPDATA%\TokenDock` |
-| Compteurs / historique de copies | Mémoire de l’application ; pas de synchronisation cloud |
-| Fichiers déposés | `%TEMP%\TokenDock-shelf`, copies indépendantes |
-| Photos prises explicitement | Dossier système Images, sous-dossier `TokenDock` |
-| Journaux IA | Lus localement, jamais publiés par TokenDock |
+| Settings/position | `%LOCALAPPDATA%\TokenDock` |
+| Counters/history | App memory, no cloud sync |
+| Dropped copies | `%TEMP%\TokenDock-shelf` |
+| Captured photos | System Pictures folder, `TokenDock` subfolder |
+| AI logs | Read locally; never uploaded by TokenDock |
 
-Pas de télémétrie applicative, compte serveur ou clé API intégrée. Les marqueurs Windows d’exclusion de l’historique sont respectés lorsqu’ils sont fournis. Les applications sources peuvent néanmoins copier des données sensibles : n’active l’historique que si tu le souhaites. Les outils IA et lecteurs utilisés ont leurs propres politiques de confidentialité.
+No app telemetry, server account or embedded API key. Windows clipboard exclusion markers are respected when supplied. History may contain sensitive content: enable only if wanted. External tools/players have their own privacy policies.
 
-Le dépôt et les releases n’incluent aucune photo réelle, conversation, préférence utilisateur ou base OpenCode. Les images générées par `--check` sont des fixtures de test.
+No real photos, conversations, preferences or OpenCode databases are distributed. Documentation uses fictional data. Tests do not activate the camera or touch the real clipboard.
 
-## Compiler et vérifier
+## Build and test
 
-Installe le **SDK .NET 10** sous Windows depuis [Microsoft](https://dotnet.microsoft.com/download/dotnet/10.0), puis Git. Le SDK est nécessaire pour développer, pas pour l’archive autonome.
+Install Git and the **.NET 10 SDK on Windows** from [Microsoft](https://dotnet.microsoft.com/download/dotnet/10.0). ZIP users do not need the SDK.
 
 ```powershell
 git clone https://github.com/Lockxii/TokenDock.git
@@ -178,69 +186,76 @@ dotnet publish next/TokenDock.Next.csproj -c Release -o artifacts/dev --no-self-
 dotnet artifacts/dev/TokenDock.Next.dll --check
 ```
 
-Les contrôles produisent `artifacts/dev/checks.txt` et des rendus PNG hors écran. Au moment de cette publication : **2 130 contrôles réussis**. Ce nombre peut évoluer avec les contributions. `--check` ne prend pas le contrôle du bureau et ne démarre pas une vraie capture caméra ; les tests de copies utilisent des données artificielles. Certains contrôles inspectent les métriques système locales.
+Inspect `artifacts/dev/checks.txt` and the PNGs. There are **2,130 offscreen checks**; the count may evolve. They validate calculations/rendering, not every hardware device or desktop gesture. Some inspect system memory metrics.
 
-Pour lancer manuellement ta compilation, après avoir quitté toute autre instance :
+Launch manually after quitting another instance:
 
 ```powershell
 .\artifacts\dev\TokenDock.Next.exe
 ```
 
-Construire une archive autonome avec runtime et empreinte SHA-256 :
+Build an autonomous ZIP with runtime, notices and checksum:
 
 ```powershell
-.\scripts\package.ps1 -Version 0.1.0
+.\scripts\package.ps1 -Version 0.2.0
 ```
 
-Le script compile, lance `--check`, puis empaquette uniquement le runtime nécessaire et les assets. Les captures et fichiers de test ne vont pas dans le ZIP. Une compilation CI Windows vérifie aussi les changements poussés sur GitHub.
+The script tests then packages a runtime allowlist, excluding generated test files. Windows CI runs on pushes and pull requests.
 
-## Modifier avec une IA
+Reproduce documentation media without controlling the desktop:
 
-Lis le [guide complet](docs/AI_GUIDE.md) pour Codex, Claude Code, OpenCode ou un autre assistant. Aucune clé ou plugin particulier n’est requis par ce dépôt.
+```powershell
+.\scripts\render-media.ps1
+```
 
-Exemple de demande :
+FFmpeg in PATH is required for the GIF. `--demo` renders fictional data without opening a window or activating devices. Timing is illustrative, not a frame-rate benchmark.
 
-> Lis AGENTS.md et les fichiers concernés. Ajoute un réglage du délai de survol entre 30 et 300 ms dans Personnaliser, avec valeur par défaut de 60 ms. Préserve le debounce, la continuité des animations et les réglages existants. Travaille sur une branche, exécute les contrôles hors écran, ne lance pas l’application sur mon bureau et ne publie rien sans demande explicite. Donne le résumé du diff et les résultats de validation.
+## Modify with an AI assistant
 
-Ne transmets pas à une IA tes journaux privés, captures caméra, presse-papiers, secrets ou fichiers de configuration personnels. Le code et les fixtures suffisent pour la plupart des changements.
+Read [the complete guide](docs/AI_GUIDE.md) for Codex, Claude Code, OpenCode or another assistant. No assistant-specific plugin/key is required by this repo.
 
-## Dépannage
+> Read AGENTS.md and relevant source. Add a 30–300 ms hover-delay setting, default 60 ms. Preserve debounce, interrupted motion and settings. Work on a branch. Build and run offscreen checks. Do not control my desktop, start my camera or read my clipboard. Do not publish unless requested. Summarize the diff, validation and limitations.
 
-| Problème | Vérifications |
+Do not share private logs, photos, clipboard, credentials or personal configuration. Source and synthetic fixtures suffice for most changes.
+
+## Troubleshooting
+
+| Symptom | Check |
 | --- | --- |
-| Rien ne s’ouvre | Quitte l’ancienne instance via la zone de notification ; conserve tous les fichiers extraits ensemble. |
-| Barre masquée | Double-clic sur l’icône TokenDock près de l’horloge Windows. |
-| Compteurs à zéro | Vérifie les chemins des sources, leur statut et qu’un nouvel événement d’usage a été publié après lancement. Une source absente n’est pas une consommation nulle confirmée. |
-| Caméra indisponible | Paramètres Windows → Confidentialité et sécurité → Caméra : autoriser les applications de bureau ; vérifier la caméra et les applications qui la monopolisent, puis réouvrir le panneau. |
-| Musique vide | Le lecteur doit publier une session multimédia Windows ; essayer pendant une lecture active. |
-| Dépôt refusé | Active Copies, utilise des fichiers locaux classiques et respecte les limites. Explorateur et TokenDock doivent fonctionner au même niveau de privilège : ne lance pas TokenDock en administrateur. |
-| Photo non transparente après collage | Glisse le fichier PNG vers la destination ; certains logiciels aplatissent les images du presse-papiers. |
-| Réglages impossibles à enregistrer | Vérifie l’accès à `%LOCALAPPDATA%\TokenDock`, puis réessaie. |
-| Animations absentes | TokenDock tient compte du réglage Windows qui désactive les animations. |
-| Police/échelle bizarre | Précise dans une issue le bord utilisé, la mise à l’échelle Windows et le nombre d’écrans. |
+| Nothing opens | Quit the previous instance and keep runtime files together. |
+| Hidden dock | Double-click its tray icon, including hidden icons. |
+| Zero tokens | Check paths/status and new usage events; missing data is not confirmed zero. |
+| Camera unavailable | Windows privacy settings → Camera → allow desktop apps; check other camera users, then reopen. |
+| No music | Start a player exposing a Windows media session. |
+| Drop rejected | Regular files within limits; Clipboard enabled; app and Explorer at equal privilege. |
+| Transparency lost | Drag the PNG; some apps flatten clipboard images. |
+| Settings fail | Check access to `%LOCALAPPDATA%\TokenDock`. |
+| No animation | Check Windows accessibility settings. |
+| Scaling/layout issue | Report edge, DPI and monitor arrangement. |
 
-Pour une issue utile : version, Windows, DPI/écrans, étapes minimales, résultat attendu/obtenu. Floute noms de fichiers, visages et contenu personnel des captures. N’envoie pas tes journaux IA complets.
+Include version, OS, scaling, steps and expected/actual behavior in issues. Redact faces, filenames and private content. Never upload full AI conversations.
 
 ## Architecture
 
-| Fichier | Rôle |
+| Source | Responsibility |
 | --- | --- |
-| `next/App.cs` | Fenêtre, timers de survol, notification, intégration des modules, entrée `--check` |
-| `next/NotchSurface.cs` | Rendu du rail, géométrie, hit tests, transitions, panneaux RAM/tokens |
-| `next/SpringAnimation.cs` | Animation amortie et reprise de vitesse |
-| `next/Personalization.cs` | Préférences, ordre global, sources JSON personnalisées |
-| `next/PersonalizationView.cs`, `CatSettings.cs` | Éditeur visuel et aperçu RAM |
-| `next/IconGesture.cs` | Réordre direct des icônes |
-| `Meter.cs`, `MemoryInfo.cs` | Sources IA et RAM système |
-| `next/MusicModule.cs`, `MusicPane.cs` | Session multimédia et lecteur |
-| `next/ClipboardModule.cs`, `CopyItem.cs`, `FileShelf.cs` | Historique et stockage temporaire |
-| `next/InlineModules.cs` | Cartes Copies et hôte musique |
-| `next/CameraPane.cs` | Capture, cycle de vie caméra, recadrage rond et photo |
-| `next/*Checks.cs` | Contrôles hors écran et fixtures |
-| `assets/` | Logos, sprites et icônes distribués |
+| `next/App.cs` | Window, hover, tray, module composition and entry points |
+| `next/NotchSurface.cs` | Rendering, geometry, hit tests, transitions, RAM/tokens |
+| `next/SpringAnimation.cs` | Damped motion and retargeting |
+| `next/Personalization.cs` | Preferences, order and JSON feeds |
+| `next/PersonalizationView.cs`, `CatSettings.cs` | Editor and RAM preview |
+| `next/IconGesture.cs` | Direct reordering |
+| `Meter.cs`, `MemoryInfo.cs` | Usage and RAM readers |
+| `next/MusicModule.cs`, `MusicPane.cs` | Media sessions/player |
+| `next/ClipboardModule.cs`, `CopyItem.cs`, `FileShelf.cs` | History and temporary files |
+| `next/InlineModules.cs` | Clipboard cards and music host |
+| `next/CameraPane.cs` | Capture lifecycle and circular photo |
+| `next/*Checks.cs` | Offscreen checks |
+| `next/MediaDemo.cs` | Reproducible documentation renders |
+| `assets/` | Logos, sprite and icons |
 
-## Limites et licence
+## Contributing and license
 
-Le projet privilégie les API natives et évite les services permanents, mais **aucune consommation CPU/RAM universelle n’est garantie**. La caméra et certains lecteurs peuvent coûter davantage selon le matériel. Les formats des outils IA, la prise en charge multimédia et les permissions Windows peuvent changer.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md). Bounded work and native APIs help keep the dock lean, but **no universal CPU/RAM usage is guaranteed**.
 
-Code sous [licence MIT](LICENSE). Voir [les notices des assets et composants tiers](THIRD_PARTY_NOTICES.md). TokenDock est indépendant d’OpenAI, Anthropic, OpenCode et boring.notch.
+[MIT license](LICENSE); [third-party notices](THIRD_PARTY_NOTICES.md). Independent of OpenAI, Anthropic, OpenCode and boring.notch.

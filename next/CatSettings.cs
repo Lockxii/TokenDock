@@ -14,8 +14,8 @@ sealed class CatSettings:Border {
 </ResourceDictionary>
 """);
   var stack=new StackPanel();Child=stack;
-  var preview=new CatLivePreview(draft);var header=new DockPanel();DockPanel.SetDock(preview,Dock.Right);header.Children.Add(preview);header.Children.Add(new TextBlock{Text="Chat · RAM",Foreground=PanelUi.Text,FontSize=12,VerticalAlignment=VerticalAlignment.Center});stack.Children.Add(header);
-  var orange=Add("Orange",2,100,draft.CatOrange," %");var red=Add("Rouge",1,draft.CatOrange-1,draft.CatRed," %");var speed=Add("Vitesse",.25,2,draft.CatSpeed," ×",.05);var simulated=Add("RAM simulée",0,100,25," %");
+  var preview=new CatLivePreview(draft);var header=new DockPanel();DockPanel.SetDock(preview,Dock.Right);header.Children.Add(preview);header.Children.Add(new TextBlock{Text="Cat · RAM",Foreground=PanelUi.Text,FontSize=12,VerticalAlignment=VerticalAlignment.Center});stack.Children.Add(header);
+  var orange=Add("Orange",2,100,draft.CatOrange," %");var red=Add("Red",1,draft.CatOrange-1,draft.CatRed," %");var speed=Add("Speed",.25,2,draft.CatSpeed," ×",.05);var simulated=Add("Simulated RAM",0,100,25," %");
   void Update(){draft.CatOrange=orange.Value;red.Maximum=orange.Value-1;draft.CatRed=red.Value;draft.CatSpeed=speed.Value;preview.Update(simulated.Value);}
   orange.ValueChanged+=(_,_)=>Update();red.ValueChanged+=(_,_)=>Update();speed.ValueChanged+=(_,_)=>Update();simulated.ValueChanged+=(_,_)=>Update();Update();
   Slider Add(string name,double min,double max,double value,string unit,double tick=1){

@@ -10,7 +10,7 @@ namespace TokenDock;
 static class ModuleChecks {
  public static void Run(Action<bool> check,string dir){
   var scratch=Path.Combine(Environment.CurrentDirectory,"work","module-checks-v13");Directory.CreateDirectory(scratch);
-  var source=new CustomSource("custom","Mon outil",Path.Combine(scratch,"usage.json"));
+  var source=new CustomSource("custom","My tool",Path.Combine(scratch,"usage.json"));
   var p=new Preferences{Visible=["codex","bad","codex","custom"],Counter="bad",Sources=[source,source,new("bad","Bad","relative.json")]};p.Normalize();
   check(p.Visible.SequenceEqual(new[]{"codex","custom"})&&p.Counter=="all"&&p.Sources.Length==1);
   var copied=p.Copy();copied.Visible=[];check(p.Visible.Length==2);check(JsonSerializer.Deserialize<Preferences>(JsonSerializer.Serialize(p))!.Ids.SequenceEqual(p.Ids));
@@ -37,8 +37,8 @@ static class ModuleChecks {
    void Await(Func<bool> ready){check(SpinWait.SpinUntil(ready,3000));}
    File.WriteAllText(source.Path,"{\"input\":105,\"output\":12,\"cache\":20}");Await(()=>feeds.Snapshot()[0].Value.Total==7);
    foreach(string bad in new[]{"{","{\"input\":\"wrong\",\"output\":12}","{\"input\":1,\"output\":2,\"cache\":null}","{\"input\":-1,\"output\":2}","{\"input\":9223372036854775807,\"output\":2}"}){
-    File.WriteAllText(source.Path,bad);Await(()=>feeds.Snapshot()[0].Status.StartsWith("Source indisponible"));check(feeds.Snapshot()[0].Value.Total==7);
-    File.WriteAllText(source.Path,"{\"input\":105,\"output\":12,\"cache\":20}");Await(()=>feeds.Snapshot()[0].Status.StartsWith("Connecté"));
+    File.WriteAllText(source.Path,bad);Await(()=>feeds.Snapshot()[0].Status.StartsWith("Source unavailable"));check(feeds.Snapshot()[0].Value.Total==7);
+    File.WriteAllText(source.Path,"{\"input\":105,\"output\":12,\"cache\":20}");Await(()=>feeds.Snapshot()[0].Status.StartsWith("Connected"));
    }
    var second=new CustomSource("second","Second",Path.Combine(scratch,"second.json"));File.WriteAllText(second.Path,"{\"input\":0,\"output\":0}");feeds.Configure([source,second]);check(feeds.Snapshot()[0].Value.Total==7);feeds.Configure([source]);check(feeds.Snapshot()[0].Value.Total==7);
    // Continuous writes must not postpone every read until the stream stops.
@@ -70,9 +70,9 @@ static class ModuleChecks {
   full.Visible=["claude","codex","opencode"];s.Configure(full);s.RenderFile(Path.Combine(dir,"modules-three.png"),false,"top");s.RenderFile(Path.Combine(dir,"modules-three-open.png"),true,"top");
   var view=new PersonalizationView(full,_=>{},()=>{},()=>meters);RenderPanel(view,Path.Combine(dir,"settings-preview.png"));check(view.ActualHeight>0);
   var scroll=new ScrollViewer{Content=new PersonalizationView(full,_=>{},()=>{},()=>meters),Height=520,Resources=PanelUi.Theme(),VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled};RenderPanel(scroll,Path.Combine(dir,"settings-scroll-preview.png"));check(scroll.ScrollableHeight>0);RenderPanel(scroll,Path.Combine(dir,"settings-scroll-bottom-preview.png"),true);check(scroll.VerticalOffset>0);
-  using var clipboard=new ClipboardModule();using var clipboardView=new InlineModuleView(null,clipboard);RenderPanel(clipboardView,Path.Combine(dir,"clipboard-empty-preview.png"));check(clipboard.Status=="Désactivé");
-  using var music=new MusicModule(Dispatcher.CurrentDispatcher);using var musicView=new MusicView(music);RenderPanel(musicView,Path.Combine(dir,"music-empty-preview.png"));check(music.Status=="Désactivé"&&!music.CanPlay);
-  int actions=0;var menu=DockMenu.Create(()=>"top",_=>{},()=>{},()=>{},()=>{},()=>actions++,()=>actions++,()=>actions++);foreach(var item in menu.Items.OfType<MenuItem>().Where(m=>m.Header is string h&&h is "Personnaliser…" or "Musique" or "Presse-papiers"))item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));check(actions==3);
+  using var clipboard=new ClipboardModule();using var clipboardView=new InlineModuleView(null,clipboard);RenderPanel(clipboardView,Path.Combine(dir,"clipboard-empty-preview.png"));check(clipboard.Status=="Disabled");
+  using var music=new MusicModule(Dispatcher.CurrentDispatcher);using var musicView=new MusicView(music);RenderPanel(musicView,Path.Combine(dir,"music-empty-preview.png"));check(music.Status=="Disabled"&&!music.CanPlay);
+  int actions=0;var menu=DockMenu.Create(()=>"top",_=>{},()=>{},()=>{},()=>{},()=>actions++,()=>actions++,()=>actions++);foreach(var item in menu.Items.OfType<MenuItem>().Where(m=>m.Header is string h&&h is "Customize…" or "Music" or "Clipboard"))item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));check(actions==3);
  }
  static void RenderPanel(FrameworkElement view,string file,bool scrollEnd=false){
   var border=new Border{Width=448,Background=new SolidColorBrush(Color.FromRgb(20,20,25)),Padding=new Thickness(20),Child=view};border.Measure(new Size(448,double.PositiveInfinity));border.Arrange(new Rect(border.DesiredSize));border.UpdateLayout();if(scrollEnd&&view is ScrollViewer scroll){scroll.ScrollToBottom();border.UpdateLayout();}var image=new RenderTargetBitmap(448,(int)Math.Ceiling(border.ActualHeight),96,96,PixelFormats.Pbgra32);image.Render(border);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));using var stream=File.Create(file);encoder.Save(stream);border.Child=null;

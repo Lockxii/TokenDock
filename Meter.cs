@@ -10,7 +10,7 @@ record Usage(long Input=0,long Output=0,long Cache=0) {
  public Usage Delta(Usage old)=>new(Math.Max(0,Input-old.Input),Math.Max(0,Output-old.Output),Math.Max(0,Cache-old.Cache));
 }
 class Meter(string name) {
- public string Name=name, Status="En attente"; public Usage Value=new(); public DateTime? Updated;
+ public string Name=name, Status="Waiting"; public Usage Value=new(); public DateTime? Updated;
 }
 static class Parse {
  public static JsonElement Get(JsonElement j,string k)=>j.ValueKind==JsonValueKind.Object && j.TryGetProperty(k,out var v)?v:default;
@@ -44,24 +44,24 @@ sealed class Monitor : IDisposable {
  void Add(int i,Usage u){if(u.Total==0)return;lock(gate){Meters[i].Value+=u;Meters[i].Updated=DateTime.Now;}Changed?.Invoke();}
  public void Reset(){lock(gate)foreach(var m in Meters){m.Value=new();m.Updated=null;}}
  public void Start(){loop=Task.Run(async()=>{
-  try{Setup(); ReadOpen(true);}catch(Exception e){Status(2,"Erreur : "+e.Message);}
+  try{Setup(); ReadOpen(true);}catch(Exception e){Status(2,"Error: "+e.Message);}
   var nextDb=DateTime.UtcNow;var nextScan=DateTime.UtcNow.AddSeconds(30);
   while(!stop.IsCancellationRequested){
-   foreach(var p in dirty.Keys.ToArray())if(dirty.TryRemove(p,out int i))try{ReadTail(p,i);Status(i,"Connecté · journaux locaux");}catch(Exception e){Status(i,"Lecture : "+e.Message);}
-   if(DateTime.UtcNow>=nextDb){try{ReadOpen(false);}catch(Exception e){Status(2,"Lecture : "+e.Message);}nextDb=DateTime.UtcNow.AddSeconds(1);}
+   foreach(var p in dirty.Keys.ToArray())if(dirty.TryRemove(p,out int i))try{ReadTail(p,i);Status(i,"Connected · local logs");}catch(Exception e){Status(i,"Read error: "+e.Message);}
+   if(DateTime.UtcNow>=nextDb){try{ReadOpen(false);}catch(Exception e){Status(2,"Read error: "+e.Message);}nextDb=DateTime.UtcNow.AddSeconds(1);}
    if(DateTime.UtcNow>=nextScan){Setup();nextScan=DateTime.UtcNow.AddSeconds(30);}
    try{await wake.WaitAsync(TimeSpan.FromSeconds(1),stop.Token);}catch(OperationCanceledException){break;}
   }
  });}
  void Setup(){for(int i=0;i<2;i++){
   int idx=i; var root=roots[i];
-  if(!Directory.Exists(root)){Status(i,"Source absente");continue;}
+  if(!Directory.Exists(root)){Status(i,"Source not found");continue;}
   if(!watchers.Any(w=>w.Path==root)){
    var w=new FileSystemWatcher(root,"*.jsonl"){IncludeSubdirectories=true,NotifyFilter=NotifyFilters.LastWrite|NotifyFilters.FileName|NotifyFilters.Size,InternalBufferSize=32768};
    w.Changed+=(_,e)=>Dirty(e.FullPath,idx);w.Created+=(_,e)=>Dirty(e.FullPath,idx);w.Renamed+=(_,e)=>Dirty(e.FullPath,idx);
-   w.Error+=(_,_)=>{Status(idx,"Resynchronisation");};w.EnableRaisingEvents=true;watchers.Add(w);Status(i,"Connecté · en attente");
+   w.Error+=(_,_)=>{Status(idx,"Resyncing");};w.EnableRaisingEvents=true;watchers.Add(w);Status(i,"Connected · waiting");
   }
-  try{foreach(var f in Directory.EnumerateFiles(root,"*.jsonl",new EnumerationOptions{RecurseSubdirectories=true,IgnoreInaccessible=true}))if(File.GetLastWriteTimeUtc(f)>=started)dirty[f]=i;}catch(IOException){Status(i,"Source momentanément inaccessible");}
+  try{foreach(var f in Directory.EnumerateFiles(root,"*.jsonl",new EnumerationOptions{RecurseSubdirectories=true,IgnoreInaccessible=true}))if(File.GetLastWriteTimeUtc(f)>=started)dirty[f]=i;}catch(IOException){Status(i,"Source temporarily inaccessible");}
  }}
  internal void ReadTail(string path,int index){
   if(!File.Exists(path))return;
@@ -71,7 +71,7 @@ sealed class Monitor : IDisposable {
   f.Position=t.Offset;byte[] buf=new byte[65536];int n;
   while(!stop.IsCancellationRequested&&(n=f.Read(buf))>0){for(int k=0;k<n;k++){
    byte b=buf[k];if(b==10){if(!t.Skip&&t.Pending.Count>0)Consume(Encoding.UTF8.GetString(t.Pending.ToArray()),index,t);t.Pending.Clear();t.Skip=false;}
-   else if(!t.Skip){t.Pending.Add(b);if(t.Pending.Count>16*1024*1024){t.Pending.Clear();t.Skip=true;Status(index,"Une ligne >16 Mo a été ignorée");}}
+   else if(!t.Skip){t.Pending.Add(b);if(t.Pending.Count>16*1024*1024){t.Pending.Clear();t.Skip=true;Status(index,"A line over 16 MB was skipped");}}
   }t.Offset=f.Position;}
  }
  void Consume(string line,int i,Tail t){
@@ -85,18 +85,18 @@ sealed class Monitor : IDisposable {
   }catch(JsonException){/* Incomplete JSON lines are not usage events. */}
  }
  void ReadOpen(bool initial){
-  if(!File.Exists(db)){Status(2,"Source absente");return;}
+  if(!File.Exists(db)){Status(2,"Source not found");return;}
   var stamp=$"{File.GetLastWriteTimeUtc(db).Ticks}:{File.GetLastWriteTimeUtc(db+"-wal").Ticks}:{(File.Exists(db+"-wal")?new FileInfo(db+"-wal").Length:0)}";
   if(!initial && stamp==dbStamp)return;
   using var sql=new Sqlite(db);
-  if(table==null){var names=sql.Rows("SELECT name FROM sqlite_master WHERE type='table'").Select(r=>r[0]).ToArray();table=names.Contains("session_v2")?"session_v2":names.Contains("message")?"message":null;if(table==null){Status(2,"Format OpenCode non reconnu");return;}initial=true;}
+  if(table==null){var names=sql.Rows("SELECT name FROM sqlite_master WHERE type='table'").Select(r=>r[0]).ToArray();table=names.Contains("session_v2")?"session_v2":names.Contains("message")?"message":null;if(table==null){Status(2,"Unknown OpenCode format");return;}initial=true;}
   var next=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
   string select=table=="session_v2"?"SELECT id,tokens_input,tokens_output,tokens_cache_read+tokens_cache_write FROM session_v2":"SELECT id,coalesce(json_extract(data,'$.tokens.input'),0),coalesce(json_extract(data,'$.tokens.output'),0)+coalesce(json_extract(data,'$.tokens.reasoning'),0),coalesce(json_extract(data,'$.tokens.cache.read'),0)+coalesce(json_extract(data,'$.tokens.cache.write'),0) FROM message";
   // Baseline once. Afterwards only records modified since the previous successful query.
   foreach(var r in sql.Rows(select+(initial?"":" WHERE time_updated >= "+Math.Max(0,cursor-2000)))){
    var v=new Usage(long.Parse(r[1]),long.Parse(r[2]),long.Parse(r[3]));open.TryGetValue(r[0],out var old);if(!initial)Add(2,v.Delta(old??new()));open[r[0]]=v;
   }
-  dbStamp=stamp;cursor=next;Status(2,"Connecté · SQLite en lecture seule");
+  dbStamp=stamp;cursor=next;Status(2,"Connected · read-only SQLite");
  }
  public void Dispose(){stop.Cancel();foreach(var w in watchers)w.Dispose();}
 }
@@ -110,7 +110,7 @@ sealed class Sqlite:IDisposable {
  [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_finalize(IntPtr s);
  [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_close(IntPtr d);
  [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_busy_timeout(IntPtr d,int ms);
- public Sqlite(string path){if(sqlite3_open_v2(path,out db,1,IntPtr.Zero)!=0){Dispose();throw new IOException("Base indisponible");}sqlite3_busy_timeout(db,100);}
- public IEnumerable<string[]> Rows(string query){if(sqlite3_prepare_v2(db,query,-1,out var s,IntPtr.Zero)!=0)throw new IOException("Schéma SQLite incompatible");try{int rc;while((rc=sqlite3_step(s))==100){var r=new string[sqlite3_column_count(s)];for(int i=0;i<r.Length;i++)r[i]=Marshal.PtrToStringUTF8(sqlite3_column_text(s,i))??"0";yield return r;}if(rc!=101)throw new IOException("SQLite occupé");}finally{sqlite3_finalize(s);}}
+ public Sqlite(string path){if(sqlite3_open_v2(path,out db,1,IntPtr.Zero)!=0){Dispose();throw new IOException("Database unavailable");}sqlite3_busy_timeout(db,100);}
+ public IEnumerable<string[]> Rows(string query){if(sqlite3_prepare_v2(db,query,-1,out var s,IntPtr.Zero)!=0)throw new IOException("Incompatible SQLite schema");try{int rc;while((rc=sqlite3_step(s))==100){var r=new string[sqlite3_column_count(s)];for(int i=0;i<r.Length;i++)r[i]=Marshal.PtrToStringUTF8(sqlite3_column_text(s,i))??"0";yield return r;}if(rc!=101)throw new IOException("SQLite busy");}finally{sqlite3_finalize(s);}}
  public void Dispose(){if(db!=IntPtr.Zero){sqlite3_close(db);db=IntPtr.Zero;}}
 }

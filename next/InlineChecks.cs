@@ -10,7 +10,7 @@ static class InlineChecks {
  public static void Run(Action<bool> check,string dir){
   var surface=new NotchSurface{Running=false};surface.SetFixture();surface.Configure(new Preferences{Music=true,ClipboardHistory=true});
   using var music=new MusicModule(Dispatcher.CurrentDispatcher);using var clipboard=new ClipboardModule();
-  for(int i=0;i<20;i++)clipboard.History.Add(i==19?"Texte de démonstration assez long pour vérifier la coupure propre dans une barre latérale.":$"Copie de démonstration {i+1:00}");
+  for(int i=0;i<20;i++)clipboard.History.Add(i==19?"Long demo text to check clean truncation in the side dock.":$"Demo item {i+1:00}");
   foreach(string edge in new[]{"top","bottom","left","right"})foreach(string module in new[]{"music","clipboard"}){
    surface.SetEdge(edge);surface.ClearHover();surface.ShowModule(module,new InlineModuleView(module=="music"?music:null,module=="clipboard"?clipboard:null));
    check(surface.ActiveModule==module);surface.Open=1;var bounds=surface.ModuleBounds;check(new[]{bounds.TopLeft,bounds.TopRight,bounds.BottomLeft,bounds.BottomRight}.All(surface.Contains));check(surface.IsModuleContent(new Point(bounds.X+10,bounds.Y+10)));
@@ -25,9 +25,9 @@ static class InlineChecks {
    surface.Open=1;surface.CloseModule();check(surface.ActiveModule==null);
   }
   surface.SetEdge("right");surface.Open=1;var first=new DisposableView();surface.ShowModule("music",first);surface.ShowModule("clipboard",new InlineModuleView(null,clipboard));check(first.Disposed);
-  surface.RenderFile(Path.Combine(dir,"inline-history-before-clear.png"),true,"right");var clear=Descendants<Button>(surface).Single(b=>b.Content is string s&&s=="Effacer");clear.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));check(clipboard.History.Items.Count==0);surface.RenderFile(Path.Combine(dir,"inline-history-empty.png"),true,"right");check(Descendants<Button>(surface).Count()==1);
+  surface.RenderFile(Path.Combine(dir,"inline-history-before-clear.png"),true,"right");var clear=Descendants<Button>(surface).Single(b=>b.Content is string s&&s=="Clear");clear.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));check(clipboard.History.Items.Count==0);surface.RenderFile(Path.Combine(dir,"inline-history-empty.png"),true,"right");check(Descendants<Button>(surface).Count()==1);
   surface.SelectHover(new Point(294,82));check(surface.ActiveModule==null&&surface.Selected==1);
   surface.ShowModule("music",new InlineModuleView(music,null));surface.SetFloating(true,false);surface.RenderFile(Path.Combine(dir,"inline-music-floating.png"),true,"top");surface.CloseModule();check(surface.Clip==null);
-  check(music.Status=="Désactivé"&&clipboard.Status=="Désactivé");surface.Running=false;
+  check(music.Status=="Disabled"&&clipboard.Status=="Disabled");surface.Running=false;
  }
 }

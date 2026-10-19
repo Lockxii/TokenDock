@@ -1,14 +1,14 @@
-# Contribuer
+# Contributing
 
-Forke le dépôt, crée une branche dédiée et lis [AGENTS.md](AGENTS.md). Utilise Windows et le SDK .NET 10.
+Fork, create a focused branch and read [AGENTS.md](AGENTS.md). Use Windows and the .NET 10 SDK for the current app.
 
-1. Décris le problème et son scénario minimal.
-2. Modifie les fichiers concernés sans refactorisation sans rapport.
-3. Compile et exécute `--check` (commandes dans le README).
-4. Ajoute des fixtures pour les régressions importantes ; n’utilise pas les données de ton compte.
-5. Vérifie les rendus et, si nécessaire, essaye manuellement la fonction sur ton PC.
-6. Ouvre une pull request avec comportement avant/après, contrôles exécutés et limites connues.
+1. Describe the problem with minimal steps.
+2. Edit relevant files without unrelated refactors.
+3. Build and run --check using README commands.
+4. Add synthetic fixtures for meaningful regressions.
+5. Inspect renders and manually verify device-dependent behavior when appropriate.
+6. Submit a PR with before/after behavior, checks and limits.
 
-Pas de photos privées, dumps de presse-papiers, journaux de conversations, secrets ou binaires de développement dans une PR. Les nouvelles dépendances doivent être justifiées et leurs licences examinées. Aucun test matériel n’est exécuté automatiquement par la CI.
+No private photos, clipboard dumps, conversations, secrets or development binaries. Justify dependencies and review licenses. CI does not test real hardware. Use English for UI/docs. Linux/macOS releases must meet the full-parity gate.
 
-Les contributions au code sont proposées sous la licence MIT du projet. Les marques et assets tiers restent soumis à leurs droits propres.
+Code contributions are under MIT. Third-party assets and trademarks retain their rights.

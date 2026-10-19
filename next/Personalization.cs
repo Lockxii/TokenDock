@@ -21,7 +21,7 @@ sealed class Preferences {
  public CustomSource[] Sources {get;set;}=[];
  public static readonly string[] Builtin=["codex","claude","opencode"];
  public string[] Ids=>Builtin.Concat(Sources.Select(s=>s.Id)).ToArray();
- public string Name(string id)=>id switch{"all"=>"Tous les outils","codex"=>"Codex","claude"=>"Claude Code","opencode"=>"OpenCode",_=>Sources.FirstOrDefault(s=>s.Id==id)?.Name??id};
+ public string Name(string id)=>id switch{"all"=>"All tools","codex"=>"Codex","claude"=>"Claude Code","opencode"=>"OpenCode",_=>Sources.FirstOrDefault(s=>s.Id==id)?.Name??id};
  public Preferences Copy()=>JsonSerializer.Deserialize<Preferences>(JsonSerializer.Serialize(this))!;
  public bool IsShown(string id)=>id switch{"music"=>Music,"clipboard"=>ClipboardHistory||Camera,"camera"=>Camera,"cat"=>CatVisible,_=>Visible.Contains(id)};
  public void ShowItem(string id,bool show){LayoutOrder??=Layout;if(id=="music")Music=show;else if(id=="clipboard")ClipboardHistory=show;else if(id=="camera")Camera=show;else if(id=="cat")CatVisible=show;else if(Ids.Contains(id))Visible=show?Visible.Append(id).Distinct().ToArray():Visible.Where(x=>x!=id).ToArray();}
@@ -50,15 +50,15 @@ sealed class CustomFeeds:IDisposable {
   public readonly CustomSource Source;public readonly Meter Meter;public Usage? Baseline;public FileSystemWatcher? Watcher;
   readonly Timer timer;readonly object gate;readonly Action changed;bool disposed,scheduled;
   public Feed(CustomSource source,object gate,Action changed){Source=source;Meter=new(source.Name);this.gate=gate;this.changed=changed;timer=new(_=>Read(),null,Timeout.Infinite,Timeout.Infinite);
-   try{Read();Watcher=new FileSystemWatcher(System.IO.Path.GetDirectoryName(source.Path)!,System.IO.Path.GetFileName(source.Path)){NotifyFilter=NotifyFilters.LastWrite|NotifyFilters.Size|NotifyFilters.FileName};Watcher.Changed+=(_,_)=>Queue();Watcher.Created+=(_,_)=>Queue();Watcher.Renamed+=(_,_)=>Queue();Watcher.Deleted+=(_,_)=>Queue();Watcher.Error+=(_,_)=>Queue();Watcher.EnableRaisingEvents=true;Read();}catch(Exception e)when(e is IOException or UnauthorizedAccessException or ArgumentException){Meter.Status="Source inaccessible";}
+   try{Read();Watcher=new FileSystemWatcher(System.IO.Path.GetDirectoryName(source.Path)!,System.IO.Path.GetFileName(source.Path)){NotifyFilter=NotifyFilters.LastWrite|NotifyFilters.Size|NotifyFilters.FileName};Watcher.Changed+=(_,_)=>Queue();Watcher.Created+=(_,_)=>Queue();Watcher.Renamed+=(_,_)=>Queue();Watcher.Deleted+=(_,_)=>Queue();Watcher.Error+=(_,_)=>Queue();Watcher.EnableRaisingEvents=true;Read();}catch(Exception e)when(e is IOException or UnauthorizedAccessException or ArgumentException){Meter.Status="Cannot access source";}
   }
   void Queue(){lock(gate)if(!disposed&&!scheduled){scheduled=true;timer.Change(60,Timeout.Infinite);}}
   void Read(){lock(gate){scheduled=false;if(disposed)return;try{
     using var f=new FileStream(Source.Path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete);if(f.Length>65536)throw new IOException();using var doc=JsonDocument.Parse(f);var j=doc.RootElement;
     if(j.ValueKind!=JsonValueKind.Object||!j.TryGetProperty("input",out var input)||!j.TryGetProperty("output",out var output)||input.ValueKind!=JsonValueKind.Number||output.ValueKind!=JsonValueKind.Number||!input.TryGetInt64(out long a)||!output.TryGetInt64(out long b)||a<0||b<0)throw new JsonException();
     long c=0;if(j.TryGetProperty("cache",out var cache)&&(cache.ValueKind!=JsonValueKind.Number||!cache.TryGetInt64(out c)||c<0))throw new JsonException();checked{_ =a+b+c;}
-    var value=new Usage(a,b,c);if(Baseline is { } old){var delta=value.Delta(old);checked{var next=new Usage(Meter.Value.Input+delta.Input,Meter.Value.Output+delta.Output,Meter.Value.Cache+delta.Cache);_ = next.Input+next.Output+next.Cache;Meter.Value=next;}if(delta.Total>0)Meter.Updated=DateTime.Now;}Baseline=value;Meter.Status="Connecté · source personnalisée";
-   }catch(Exception e)when(e is IOException or UnauthorizedAccessException or JsonException or OverflowException){Meter.Status="Source indisponible ou JSON invalide";}}changed();}
+    var value=new Usage(a,b,c);if(Baseline is { } old){var delta=value.Delta(old);checked{var next=new Usage(Meter.Value.Input+delta.Input,Meter.Value.Output+delta.Output,Meter.Value.Cache+delta.Cache);_ = next.Input+next.Output+next.Cache;Meter.Value=next;}if(delta.Total>0)Meter.Updated=DateTime.Now;}Baseline=value;Meter.Status="Connected · custom source";
+   }catch(Exception e)when(e is IOException or UnauthorizedAccessException or JsonException or OverflowException){Meter.Status="Source unavailable or invalid JSON";}}changed();}
   public void Dispose(){lock(gate){disposed=true;Watcher?.Dispose();timer.Dispose();}}
  }
  readonly object gate=new();Feed[] feeds=[];public event Action? Changed;

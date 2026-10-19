@@ -43,14 +43,14 @@ static class DockMenu {
  """;
  internal static ContextMenu Create(Func<string> currentEdge,Action<string> setEdge,Action reset,Action hide,Action quit,Action? customize=null,Action? music=null,Action? clipboard=null){
   var menu=new ContextMenu{Resources=(ResourceDictionary)XamlReader.Parse(Theme)};
-  foreach(var (name,id,icon) in new[]{("En haut","top","↑"),("En bas","bottom","↓"),("À gauche","left","←"),("À droite","right","→")}){
+  foreach(var (name,id,icon) in new[]{("Top","top","↑"),("Bottom","bottom","↓"),("Left","left","←"),("Right","right","→")}){
    var item=new MenuItem{Header=name,Icon=icon,Tag=id,IsCheckable=true};
    item.Click+=(_,_)=>{setEdge(id);Refresh();};menu.Items.Add(item);
   }
   menu.Items.Add(new Separator{Style=(Style)menu.Resources[typeof(Separator)]});
-  void Add(string name,string icon,Action action){var item=new MenuItem{Header=name,Icon=name=="Musique"?ModuleIcons.Image("music",19):name=="Presse-papiers"?ModuleIcons.Image("clipboard",19):icon};item.Click+=(_,_)=>action();menu.Items.Add(item);}
-  if(customize!=null)Add("Personnaliser…","⚙",customize);if(music!=null)Add("Musique","♫",music);if(clipboard!=null)Add("Presse-papiers","▤",clipboard);
-  Add("Réinitialiser les tokens","↺",reset);Add("Masquer","−",hide);Add("Quitter","×",quit);
+  void Add(string name,string icon,Action action){var item=new MenuItem{Header=name,Icon=name=="Music"?ModuleIcons.Image("music",19):name=="Clipboard"?ModuleIcons.Image("clipboard",19):icon};item.Click+=(_,_)=>action();menu.Items.Add(item);}
+  if(customize!=null)Add("Customize…","⚙",customize);if(music!=null)Add("Music","♫",music);if(clipboard!=null)Add("Clipboard","▤",clipboard);
+  Add("Reset tokens","↺",reset);Add("Hide","−",hide);Add("Quit","×",quit);
   void Refresh(){foreach(var item in menu.Items.OfType<MenuItem>())if(item.Tag is string id)item.IsChecked=id==currentEdge();}
   menu.Opened+=(_,_)=>Refresh();Refresh();return menu;
  }

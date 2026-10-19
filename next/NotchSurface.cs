@@ -27,7 +27,7 @@ sealed partial class NotchSurface:FrameworkElement {
  static readonly Brush white=Solid(242,242,246),muted=Solid(140,140,155),mint=Solid(142,221,182),line=Solid(49,49,59),selection=Solid(24,25,31);
  Preferences preferences=new();int[] order=[1,0,2];
  string playingTitle="",playingArtist="";ImageSource? playingCover;bool playing,musicPreviewEntry;
- internal bool HasMusicPreview=>preferences.Music&&preferences.MusicPreview&&playing&&!string.IsNullOrWhiteSpace(playingTitle)&&playingTitle!="Aucune lecture";
+ internal bool HasMusicPreview=>preferences.Music&&preferences.MusicPreview&&playing&&!string.IsNullOrWhiteSpace(playingTitle)&&playingTitle!="Nothing playing";
  internal Rect MusicPreviewBounds=>preferences.LayoutOrder!=null?ItemBounds("music"):Vertical?new(VerticalRailX-18,82,36,120):new(74,(edge=="bottom"?Height-ClosedDepth:0)+Extra+4,408,40);
  public void SetNowPlaying(MusicModule music){if(playing==music.Playing&&playingTitle==music.Title&&playingArtist==music.Artist&&ReferenceEquals(playingCover,music.Artwork))return;playing=music.Playing;playingTitle=music.Title;playingArtist=music.Artist;playingCover=music.Artwork;InvalidateVisual();}
  public bool WantsMusicPreview(Point point)=>HasMusicPreview&&Open<.5&&MusicPreviewBounds.Contains(point);
@@ -133,7 +133,7 @@ sealed partial class NotchSurface:FrameworkElement {
  double CurrentDepth=>Vertical?52+268*Open:ClosedDepth+(PanelDepth-ClosedDepth)*Open;
  Matrix Matrix=>edge switch{"bottom"=>new(1,0,0,-1,0,Height),"left"=>new(0,1,1,0,0,0),"right"=>new(0,1,-1,0,Width,0),_=>Matrix.Identity};
  Point Local(Point p)=>edge switch{"bottom"=>new(p.X,Height-p.Y),"right"=>new(Width-p.X,p.Y),_=>p};
- Geometry CurrentShape(){
+ internal Geometry CurrentShape(){
   double length=Vertical?364+(BodyHeight+118-364)*Open:CurrentLength;var g=Shape(length,CurrentDepth,Floating);var m=Matrix;if(!Vertical)m.OffsetX=(660-CurrentLength)/2;else m.OffsetY=PanelOffset*Open;g.Transform=new MatrixTransform(m);if(!Vertical)return g;
   var rail=Shape(364,52,Floating);rail.Transform=new MatrixTransform(Matrix);Geometry result=new CombinedGeometry(GeometryCombineMode.Union,g,rail);
   // Concave fillet where the shorter panel meets the fixed rail.
@@ -154,7 +154,7 @@ sealed partial class NotchSurface:FrameworkElement {
  }
  void Rest(DrawingContext d,double y){
   if(preferences.CounterAbove)Text(d,$"{preferences.Name(preferences.Counter)}  ·  {UsageFor(Pinned).Total:N0} tokens",330,y-16,10,mint,true);
-  if(HasMusicPreview){PreviewCover(d,new Rect(80,y+8,32,32));if(preferences.MusicTitle)Caption(d,playingTitle,124,y+7,346,12,white);if(preferences.MusicTitle)Caption(d,string.IsNullOrWhiteSpace(playingArtist)?"En lecture":playingArtist,124,y+25,346,9.5,muted);return;}
+  if(HasMusicPreview){PreviewCover(d,new Rect(80,y+8,32,32));if(preferences.MusicTitle)Caption(d,playingTitle,124,y+7,346,12,white);if(preferences.MusicTitle)Caption(d,string.IsNullOrWhiteSpace(playingArtist)?"Playing":playingArtist,124,y+25,346,9.5,muted);return;}
   for(int i=0;i<order.Length;i++){double x=74+i*Slot;int provider=order[i];
    if(order.Length<=3){Caption(d,provider==1?"Claude":data.ElementAtOrDefault(provider)?.Name??preferences.Name(preferences.Ids[provider]),x+30,y+16,Math.Max(10,Slot-80),10.5,white);Text(d,Value(provider),x+Slot-20,y+15,11.5,white,false,true,true);}
    else Text(d,Value(provider),x+29,y+19,9,white);
@@ -163,15 +163,15 @@ sealed partial class NotchSurface:FrameworkElement {
  }
  void Hover(DrawingContext d,double x,double y){
   double offset=x;
-  if(preferences.LayoutOrder==null){Caption(d,ActiveModule is string module?module=="music"?"Musique":"Copies":ramDetail?"Mémoire":selected<0?"Tous les outils":data.ElementAtOrDefault(selected)?.Name??"Tous les outils",x+Math.Max(207,72+order.Length*49),y+20,Math.Max(24,390-Math.Max(207,72+order.Length*49)),10,muted);
+  if(preferences.LayoutOrder==null){Caption(d,ActiveModule is string module?module=="music"?"Music":"Clipboard":ramDetail?"Memory":selected<0?"All tools":data.ElementAtOrDefault(selected)?.Name??"All tools",x+Math.Max(207,72+order.Length*49),y+20,Math.Max(24,390-Math.Max(207,72+order.Length*49)),10,muted);
   d.DrawLine(new Pen(line,1),new Point(x+Math.Max(191,56+order.Length*49),y+15),new Point(x+Math.Max(191,56+order.Length*49),y+36));if(ramDetail)d.DrawEllipse(memory.FreeRatio<.15?Solid(226,140,120):mint,null,new Point(x+522,y+26),2,2);}
   if(ActiveModule!=null)return;d.PushOpacity(Math.Clamp((Open-.52)/.4,0,1)*(double)GetValue(DetailFadeProperty));
   double mainY=y+62;
-  if(ramDetail){Text(d,memory.Total==0?"—":$"{memory.Available/1073741824d:0.0}",x+64,mainY,40,white);Text(d,"Go libres",x+64+Measure($"{memory.Available/1073741824d:0.0}",40)+12,mainY+22,15,muted);MemoryBar(d,new Rect(x+293,mainY+34,218,5));Text(d,$"RAM physique · {memory.Total/1073741824d:0.0} Go",x+64,y+139,11,muted);Text(d,$"{memory.FreeRatio:P0} disponible",x+511,y+139,11,mint,false,false,true);Consumers(d,x+304,y+137);d.Pop();return;}
+  if(ramDetail){Text(d,memory.Total==0?"—":$"{memory.Available/1073741824d:0.0}",x+64,mainY,40,white);Text(d,"GB available",x+64+Measure($"{memory.Available/1073741824d:0.0}",40)+12,mainY+22,15,muted);MemoryBar(d,new Rect(x+293,mainY+34,218,5));Text(d,$"Physical RAM · {memory.Total/1073741824d:0.0} GB",x+64,y+139,11,muted);Text(d,$"{memory.FreeRatio:P0} available",x+511,y+139,11,mint,false,false,true);Consumers(d,x+304,y+137);d.Pop();return;}
   string count=Value(selected);Text(d,count,x+64,mainY,40,white);double tw=Measure(count,40);Text(d,"tokens",x+64+tw+8,mainY+22,15,muted);Graph(d,new Rect(x+266,y+70,245,43),selected);
   Text(d,MeasureStatus(),x+266,y+119,9,muted);
   var usage=UsageFor(selected);string input=data.Length==0?"—":Compact(usage.Input+usage.Cache),output=data.Length==0?"—":Compact(usage.Output);
-  Text(d,"Entrée",x+64,y+139,11.5,muted);Text(d,input,x+105,y+139,12,white);d.DrawLine(new Pen(line,1),new Point(x+169,y+140),new Point(x+169,y+154));Text(d,"Sortie",x+185,y+139,11.5,muted);Text(d,output,x+222,y+139,12,white);d.Pop();
+  Text(d,"Input",x+64,y+139,11.5,muted);Text(d,input,x+105,y+139,12,white);d.DrawLine(new Pen(line,1),new Point(x+169,y+140),new Point(x+169,y+154));Text(d,"Output",x+185,y+139,11.5,muted);Text(d,output,x+222,y+139,12,white);d.Pop();
  }
  void MorphHeader(DrawingContext d,double restY){double targetX=(660-CurrentLength)/2,targetY=edge=="bottom"?Height-PanelDepth:0;double Lerp(double a,double b)=>a+(b-a)*Open;
   if(HasMusicPreview)d.PushOpacity(Fade((Open-.25)/.3));
@@ -192,14 +192,14 @@ sealed partial class NotchSurface:FrameworkElement {
   for(int i=0;i<order.Length;i++){yield return VerticalRailIconBounds(i);if(order.Length>3)continue;var label=Format(Value(order[i]),10.5,white,false);yield return new Rect(VerticalRailX-label.Width/2,VerticalRailY(i)+VerticalLabelOffset,label.Width,label.Height);}
   yield return new Rect(VerticalRailX-17,CatTop,34,32);
  }
- void DrawVertical(DrawingContext d){double hx=VerticalRailX;if(preferences.LayoutOrder==null){if(preferences.CounterAbove){string count=UsageFor(Pinned).Total.ToString("N0",CultureInfo.GetCultureInfo("fr-FR"));Text(d,count,hx,63,Math.Min(10,420/Math.Max(1,Measure(count,10))),mint,true);}if(HasMusicPreview){d.PushOpacity(Math.Clamp(1-Open/.35,0,1));PreviewCover(d,new Rect(hx-18,82,36,36));d.PushTransform(new RotateTransform(90,hx,126));if(preferences.MusicTitle)Caption(d,playingTitle,hx,120,76,11,white);d.Pop();d.Pop();d.PushOpacity(Fade((Open-.25)/.3));}for(int i=0;i<order.Length;i++){DrawProvider(d,order[i],VerticalRailIconBounds(i));if(order.Length<=3)Text(d,Value(order[i]),hx,VerticalRailY(i)+VerticalLabelOffset,10.5,white,true);}if(HasMusicPreview)d.Pop();Modules(d);
+ void DrawVertical(DrawingContext d){double hx=VerticalRailX;if(preferences.LayoutOrder==null){if(preferences.CounterAbove){string count=UsageFor(Pinned).Total.ToString("N0",CultureInfo.GetCultureInfo("en-US"));Text(d,count,hx,63,Math.Min(10,420/Math.Max(1,Measure(count,10))),mint,true);}if(HasMusicPreview){d.PushOpacity(Math.Clamp(1-Open/.35,0,1));PreviewCover(d,new Rect(hx-18,82,36,36));d.PushTransform(new RotateTransform(90,hx,126));if(preferences.MusicTitle)Caption(d,playingTitle,hx,120,76,11,white);d.Pop();d.Pop();d.PushOpacity(Fade((Open-.25)/.3));}for(int i=0;i<order.Length;i++){DrawProvider(d,order[i],VerticalRailIconBounds(i));if(order.Length<=3)Text(d,Value(order[i]),hx,VerticalRailY(i)+VerticalLabelOffset,10.5,white,true);}if(HasMusicPreview)d.Pop();Modules(d);
   Cat(d,new Rect(hx-17,CatTop,34,32));}
   if(Open<.01||ActiveModule!=null)return;d.PushOpacity(Fade((Open-.3)/.7)*(double)GetValue(DetailFadeProperty));d.PushTransform(new MatrixTransform(VerticalContentMatrix));double x=VerticalContentX;
-  Text(d,ramDetail?"RAM disponible":data.ElementAtOrDefault(selected)?.Name??"Tous les outils",x,64,12,muted);Text(d,ramDetail?$"{memory.Available/1073741824d:0.0} Go":Value(selected),x,87,34,white);if(ramDetail){MemoryBar(d,new Rect(x,174,200,5));Text(d,$"{memory.FreeRatio:P0} disponible",x+200,212,11,mint,false,false,true);Consumers(d,x,210);}else Graph(d,VerticalGraphBounds,selected);
-  if(!ramDetail){Text(d,MeasureStatus(),x,220,9,muted);var m=UsageFor(selected);Text(d,"Entrée",x,239,12,muted);Text(d,Compact(m.Input+m.Cache),x+195,239,13,white,false,false,true);Text(d,"Sortie",x,264,12,muted);Text(d,Compact(m.Output),x+195,264,13,white,false,false,true);}
-  if(ramDetail){Text(d,$"RAM  {memory.Available/1073741824d:0.0} Go libres",x,268,11,mint);MemoryBar(d,new Rect(x,287,200,3));}d.Pop();d.Pop();
+  Text(d,ramDetail?"Available RAM":data.ElementAtOrDefault(selected)?.Name??"All tools",x,64,12,muted);Text(d,ramDetail?$"{memory.Available/1073741824d:0.0} GB":Value(selected),x,87,34,white);if(ramDetail){MemoryBar(d,new Rect(x,174,200,5));Text(d,$"{memory.FreeRatio:P0} available",x+200,212,11,mint,false,false,true);Consumers(d,x,210);}else Graph(d,VerticalGraphBounds,selected);
+  if(!ramDetail){Text(d,MeasureStatus(),x,220,9,muted);var m=UsageFor(selected);Text(d,"Input",x,239,12,muted);Text(d,Compact(m.Input+m.Cache),x+195,239,13,white,false,false,true);Text(d,"Output",x,264,12,muted);Text(d,Compact(m.Output),x+195,264,13,white,false,false,true);}
+  if(ramDetail){Text(d,$"RAM  {memory.Available/1073741824d:0.0} GB available",x,268,11,mint);MemoryBar(d,new Rect(x,287,200,3));}d.Pop();d.Pop();
  }
- string MeasureStatus(){var meters=selected>=0?data.Where((_,i)=>i==selected):data.Where((_,i)=>order.Contains(i));var last=meters.Select(m=>m.Updated).Max();return last is DateTime date?$"Mesure reçue à {date:HH:mm:ss}":"En attente d’une mesure";}
+ string MeasureStatus(){var meters=selected>=0?data.Where((_,i)=>i==selected):data.Where((_,i)=>order.Contains(i));var last=meters.Select(m=>m.Updated).Max();return last is DateTime date?$"Usage received at {date:HH:mm:ss}":"Waiting for usage data";}
  void PreviewCover(DrawingContext d,Rect rect){d.PushClip(new RectangleGeometry(rect,7,7));d.DrawRectangle(selection,null,rect);d.DrawImage(playingCover??ModuleIcons.Get("music"),rect);d.Pop();}
  void Caption(DrawingContext d,string text,double x,double y,double width,double size,Brush brush){var value=Format(text,size,brush,false);value.MaxTextWidth=width;value.MaxLineCount=1;value.Trimming=TextTrimming.CharacterEllipsis;d.DrawText(value,new Point(x,y));}
  void DrawProvider(DrawingContext d,int provider,Rect rect){if(provider<3)d.DrawImage(logos[provider==0?1:provider==1?0:2],rect);else{d.DrawRoundedRectangle(selection,null,rect,6,6);Text(d,(data.ElementAtOrDefault(provider)?.Name??"?")[..1].ToUpperInvariant(),rect.X+rect.Width/2,rect.Y+2,12,white,true);}}
@@ -236,15 +236,15 @@ sealed partial class NotchSurface:FrameworkElement {
  void Consumers(DrawingContext d,double x,double y){
   for(int i=0;i<consumers.Length;i++){var app=consumers[i];var r=new Rect(x+i*27,y,20,20);bool hover=pointer is Point p&&r.Contains(p);if(hover)d.DrawRoundedRectangle(selection,null,new Rect(r.X-3,r.Y-3,26,26),7,7);
    if(app.Icon!=null)d.DrawImage(app.Icon,r);else{d.DrawRoundedRectangle(line,null,r,5,5);Text(d,app.Name[..1].ToUpperInvariant(),r.X+10,r.Y+2,11,white,true);}
-   if(hover)Bubble(d,$"{app.Name} · {app.Bytes/1073741824d:0.0} Go · {app.Count} proc.",Vertical?x:x-75,y-32,Vertical?200:270);
+   if(hover)Bubble(d,$"{app.Name} · {app.Bytes/1073741824d:0.0} GB · {app.Count} proc.",Vertical?x:x-75,y-32,Vertical?200:270);
   }
  }
  void Bubble(DrawingContext d,string value,double x,double y,double width){
   var text=Format(value,10.5,white,false);text.MaxTextWidth=width-18;text.Trimming=TextTrimming.CharacterEllipsis;
   d.DrawRoundedRectangle(selection,new Pen(line,1),new Rect(x,y,width,25),7,7);d.DrawText(text,new Point(x+9,y+5));
  }
- bool Connected(int p)=>data.ElementAtOrDefault(p)?.Status.StartsWith("Connecté")==true;
- string Value(int p)=>p<0?(data.Length==0?"—":Compact(UsageFor(-1).Total)):data.ElementAtOrDefault(p) is { } m?(m.Status.StartsWith("Source absente")||m.Status.StartsWith("Erreur")?"—":Compact(m.Value.Total)):"—";
+ bool Connected(int p)=>data.ElementAtOrDefault(p)?.Status.StartsWith("Connected")==true;
+ string Value(int p)=>p<0?(data.Length==0?"—":Compact(UsageFor(-1).Total)):data.ElementAtOrDefault(p) is { } m?(m.Status.StartsWith("Source not found")||m.Status.StartsWith("Error")?"—":Compact(m.Value.Total)):"—";
  void MemoryBar(DrawingContext d,Rect r){d.DrawRoundedRectangle(line,null,r,r.Height/2,r.Height/2);d.DrawRoundedRectangle(mint,null,new Rect(r.X,r.Y,r.Width*memory.FreeRatio,r.Height),r.Height/2,r.Height/2);}
  internal static double CatWarmth(double free)=>Math.Clamp((.40-free)/.20,0,1);
  internal static double CatHeat(double free)=>Math.Clamp((.20-free)/.15,0,1);
@@ -262,9 +262,9 @@ sealed partial class NotchSurface:FrameworkElement {
   if(heat>0){d.PushOpacity(heat);d.DrawImage(hotCats[frame],r);d.Pop();}
  }
  double Measure(string s,double size)=>Format(s,size,white,false).Width;
- FormattedText Format(string s,double size,Brush brush,bool strong)=>new(s,CultureInfo.GetCultureInfo("fr-FR"),FlowDirection.LeftToRight,strong?bold:normal,size,brush,VisualTreeHelper.GetDpi(this).PixelsPerDip);
+ FormattedText Format(string s,double size,Brush brush,bool strong)=>new(s,CultureInfo.GetCultureInfo("en-US"),FlowDirection.LeftToRight,strong?bold:normal,size,brush,VisualTreeHelper.GetDpi(this).PixelsPerDip);
  void Text(DrawingContext d,string s,double x,double y,double size,Brush brush,bool center=false,bool strong=false,bool right=false){var f=Format(s,size,brush,strong);if(center)x-=f.Width/2;else if(right)x-=f.Width;d.DrawText(f,new Point(x,y));}
- internal static string Compact(double n)=>n>=1e9?(n/1e9).ToString("0.0",CultureInfo.GetCultureInfo("fr-FR"))+"G":n>=1e6?(n/1e6).ToString("0.0",CultureInfo.GetCultureInfo("fr-FR"))+"m":n>=1000?(n/1000).ToString("0.0",CultureInfo.GetCultureInfo("fr-FR"))+"k":n.ToString("0");
+ internal static string Compact(double n)=>n>=1e9?(n/1e9).ToString("0.0",CultureInfo.GetCultureInfo("en-US"))+"G":n>=1e6?(n/1e6).ToString("0.0",CultureInfo.GetCultureInfo("en-US"))+"m":n>=1000?(n/1000).ToString("0.0",CultureInfo.GetCultureInfo("en-US"))+"k":n.ToString("0");
  internal static StreamGeometry Shape(double length,double depth,double floating=0){
   var g=new StreamGeometry();double f=Math.Clamp(floating,0,1),shoulder=Math.Min(36,depth*.44),radius=Math.Min(36,depth*.48),inset=56-20*Math.Clamp((depth-48)/128,0,1),rightInset=Math.Min(inset,30),r=Math.Min(24,depth/2),k=.5522847498;
   Point Mix(double ax,double ay,double bx,double by)=>new(ax+(bx-ax)*f,ay+(by-ay)*f);
@@ -284,6 +284,6 @@ sealed partial class NotchSurface:FrameworkElement {
  protected override HitTestResult? HitTestCore(PointHitTestParameters p)=>CurrentShape().FillContains(p.HitPoint)?new PointHitTestResult(this,p.HitPoint):null;
  internal bool Contains(Point p)=>CurrentShape().FillContains(p);
  internal int Selected=>selected;
- internal void SetFixture(){data=[new Meter("Codex"){Value=new Usage(31200,6400,600),Status="Connecté"},new Meter("Claude Code"){Value=new Usage(10000,2400),Status="Connecté"},new Meter("OpenCode"){Value=new Usage(7100,1000),Status="Connecté"}];memory=new MemoryInfo((ulong)(32*1073741824d),(ulong)(8.2*1073741824d));foreach(var q in samples){q.Clear();foreach(var n in new[]{0d,1,4,9,5,4,7,10,8,6,12,21,11,9})q.Enqueue(n);}sampleTimes.Clear();for(int i=0;i<14;i++)sampleTimes.Enqueue(DateTime.Today.AddHours(14).AddMinutes(32).AddSeconds(i));selected=-1;pointer=null;ramDetail=false;}
+ internal void SetFixture(){data=[new Meter("Codex"){Value=new Usage(31200,6400,600),Status="Connected"},new Meter("Claude Code"){Value=new Usage(10000,2400),Status="Connected"},new Meter("OpenCode"){Value=new Usage(7100,1000),Status="Connected"}];memory=new MemoryInfo((ulong)(32*1073741824d),(ulong)(8.2*1073741824d));foreach(var q in samples){q.Clear();foreach(var n in new[]{0d,1,4,9,5,4,7,10,8,6,12,21,11,9})q.Enqueue(n);}sampleTimes.Clear();for(int i=0;i<14;i++)sampleTimes.Enqueue(DateTime.Today.AddHours(14).AddMinutes(32).AddSeconds(i));selected=-1;pointer=null;ramDetail=false;}
  internal void RenderFile(string path,bool expand,string side,double progress=-1){SetEdge(side);BeginAnimation(OpenProperty,null);Open=progress>=0?progress:expand?1:0;Measure(new Size(Width,Height));Arrange(new Rect(0,0,Width,Height));UpdateLayout();var bitmap=new RenderTargetBitmap((int)Width*2,(int)Height*2,192,192,PixelFormats.Pbgra32);bitmap.Render(this);var bounds=CurrentShape().Bounds;var visual=new DrawingVisual();int w=(int)Math.Ceiling(bounds.Width*2),h=(int)Math.Ceiling(bounds.Height*2);using(var c=visual.RenderOpen()){c.DrawRectangle(Solid(121,119,188),null,new Rect(0,0,w/2d,h/2d));c.DrawImage(bitmap,new Rect(-bounds.X,-bounds.Y,Width,Height));}var composed=new RenderTargetBitmap(w,h,192,192,PixelFormats.Pbgra32);composed.Render(visual);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(composed));using var f=File.Create(path);encoder.Save(f);}
 }

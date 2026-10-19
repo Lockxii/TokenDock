@@ -8,7 +8,7 @@ namespace TokenDock;
 enum CopyKind { Text, Image, Files }
 sealed record CopyItem(CopyKind Kind,string Key,string Text,BitmapSource? Image,string[] Files,long Bytes) {
  public const long MaxImageBytes=16*1024*1024;
- public string Label=>Kind switch{CopyKind.Image=>"Image",CopyKind.Files=>Files.Length==1?"Fichier":$"{Files.Length} fichiers",_=>"Texte"};
+ public string Label=>Kind switch{CopyKind.Image=>"Image",CopyKind.Files=>Files.Length==1?"File":$"{Files.Length} files",_=>"Text"};
  public string Preview=>Kind switch{CopyKind.Image=>$"{Image!.PixelWidth} × {Image.PixelHeight}",CopyKind.Files=>Path.GetFileName(Files[0].TrimEnd('\\'))+(Files.Length>1?$" +{Files.Length-1}":""),_=>Text.Replace('\r',' ').Replace('\n',' ')};
  public static CopyItem? FromText(string text)=>string.IsNullOrWhiteSpace(text)||text.Length>32768?null:new(CopyKind.Text,"t:"+text,text,null,[],text.Length*2L);
  public static CopyItem? FromFiles(string[] files){
