@@ -57,12 +57,12 @@ if [[ "$runtime" == osx-* ]]; then
   cp -R "$bundle" "$out/pkg-root/TokenDock.app"
   pkgbuild --analyze --root "$out/pkg-root" "$out/components.plist"
   /usr/libexec/PlistBuddy -c 'Set :0:BundleIsRelocatable false' "$out/components.plist"
-  pkg_sign=()
+  pkg_command=(pkgbuild)
   if [[ -n "${MACOS_INSTALLER_IDENTITY:-}" ]]; then
     [[ "$MACOS_INSTALLER_IDENTITY" == 'Developer ID Installer: '* ]] || exit 2
-    pkg_sign=(--sign "$MACOS_INSTALLER_IDENTITY" --timestamp)
+    pkg_command+=(--sign "$MACOS_INSTALLER_IDENTITY" --timestamp)
   fi
-  pkgbuild "${pkg_sign[@]}" --root "$out/pkg-root" --component-plist "$out/components.plist" --install-location /Applications --identifier io.github.lockxii.tokendock --version 0.3.0 "$out/TokenDock-$runtime.pkg"
+  "${pkg_command[@]}" --root "$out/pkg-root" --component-plist "$out/components.plist" --install-location /Applications --identifier io.github.lockxii.tokendock --version 0.3.0 "$out/TokenDock-$runtime.pkg"
   if [[ -n "${MACOS_NOTARY_PROFILE:-}" ]]; then
     : "${MACOS_INSTALLER_IDENTITY:?Developer ID Installer identity required}"
     codesign --sign "$MACOS_APP_IDENTITY" --timestamp "$out/TokenDock-$runtime.dmg"
