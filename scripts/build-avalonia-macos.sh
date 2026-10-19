@@ -20,4 +20,8 @@ if ! git -C "$source" apply --reverse --check "$patch_file" 2>/dev/null; then
 fi
 (cd "$source" && dotnet build native/Avalonia.Native/Avalonia.Native.macOS.proj -c Release --nologo)
 cp "$source/artifacts/native/Release/libAvalonia.Native.OSX.dylib" "$out/libAvaloniaNative.dylib"
+# Framework-dependent publishes resolve the NuGet runtime asset in this subfolder.
+if [[ -d "$out/runtimes/osx/native" ]]; then
+  cp "$out/libAvaloniaNative.dylib" "$out/runtimes/osx/native/libAvaloniaNative.dylib"
+fi
 cp "$root/desktop/native/avalonia/LICENSE" "$out/Avalonia-LICENSE.txt"
