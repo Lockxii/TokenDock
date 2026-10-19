@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 namespace TokenDock;
 static class Ui {
  public static readonly IBrush Mint=new SolidColorBrush(Color.Parse("#91DEBC")),Muted=new SolidColorBrush(Color.Parse("#93939F")),Card=new SolidColorBrush(Color.Parse("#1D1D23"));
@@ -30,9 +31,12 @@ static class Assets {
  }
 }
 sealed class Cat:Control {
- readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(66)};double phase;MemoryInfo memory;Preferences prefs;
- public Cat(Preferences prefs){this.prefs=prefs;Width=40;Height=40;timer.Tick+=(_,_)=>{if(!prefs.ReduceMotion){phase+=memory.CyclesPerSecond*prefs.CatSpeed*.066;InvalidateVisual();}};AttachedToVisualTree+=(_,_)=>{if(!prefs.ReduceMotion)timer.Start();};DetachedFromVisualTree+=(_,_)=>timer.Stop();Avalonia.Automation.AutomationProperties.SetName(this,"Available RAM");}
- public void Update(MemoryInfo value){memory=value;InvalidateVisual();}
+ readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(66)};double phase;MemoryInfo memory;Preferences prefs;bool attached;Visual[] visibilityParents=[];
+ public Cat(Preferences prefs){this.prefs=prefs;Width=40;Height=40;timer.Tick+=(_,_)=>{if(!prefs.ReduceMotion){phase+=memory.CyclesPerSecond*prefs.CatSpeed*.066;InvalidateVisual();}};AttachedToVisualTree+=(_,_)=>{attached=true;visibilityParents=this.GetVisualAncestors().Prepend(this).ToArray();foreach(var parent in visibilityParents)parent.PropertyChanged+=VisibilityChanged;UpdateAnimation();};DetachedFromVisualTree+=(_,_)=>{attached=false;timer.Stop();foreach(var parent in visibilityParents)parent.PropertyChanged-=VisibilityChanged;visibilityParents=[];};Avalonia.Automation.AutomationProperties.SetName(this,"Available RAM");}
+ void VisibilityChanged(object? sender,AvaloniaPropertyChangedEventArgs e){if(e.Property==IsVisibleProperty)UpdateAnimation();}
+ void UpdateAnimation(){if(attached&&IsEffectivelyVisible&&!prefs.ReduceMotion)timer.Start();else timer.Stop();}
+ internal bool AnimationRunning=>timer.IsEnabled;
+ public void Update(MemoryInfo value){memory=value;UpdateAnimation();InvalidateVisual();}
  public override void Render(DrawingContext context){
   double percent=memory.FreeRatio*100;int heat=percent<prefs.CatRed?2:percent<prefs.CatOrange?1:0;
   var image=Assets.CatFrame((int)(phase*8)%8,heat);context.DrawImage(image,new Rect(0,0,image.Size.Width,image.Size.Height),new Rect(0,5,40,30));

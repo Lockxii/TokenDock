@@ -28,6 +28,10 @@ static class QualityChecks {
   var moved=dock.GetVisualDescendants().OfType<Button>().Single(b=>Equals(b.Tag,id));
   if(!moved.IsFocused)throw new InvalidOperationException("Keyboard reorder lost focus");count++;
   dock.KeyPress(Key.Escape,Avalonia.Input.RawInputModifiers.None,PhysicalKey.Escape,null);if(dock.Expanded)throw new InvalidOperationException("Escape must close the panel");count++;
+  dock.Hide();Dispatcher.UIThread.RunJobs();
+  if(dock.GetVisualDescendants().OfType<Cat>().Any(c=>c.AnimationRunning))throw new InvalidOperationException("Hidden cats must not wake animation timers");count++;
+  dock.Show();dock.Settle();
+  if(!dock.GetVisualDescendants().OfType<Cat>().Any(c=>c.AnimationRunning))throw new InvalidOperationException("Visible RAM cat animation must resume");count++;
   return count;
  }
  internal static int Performance(string[] args){
