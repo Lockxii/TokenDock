@@ -15,6 +15,7 @@ else:
     status = dbus.Interface(bus.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.freedesktop.DBus.Properties')
     status.Set('org.a11y.Status', 'IsEnabled', dbus.Boolean(True))
     import pyatspi
+    from gi.repository import GLib
 
 last_snapshot = []
 def until(check, description):
@@ -57,7 +58,13 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
                 nodes.append(dict(name=node.name, role=node.getRoleName(), actions=actions))
                 for child in node:
                     if child: visit(child, depth+1)
-            visit(target)
+            try:
+                visit(target)
+            except GLib.Error as error:
+                # A module switch destroys old peers during enumeration. Retry
+                # only the explicit stale-object error; persistent failures time out.
+                if "No handler registered for object" not in str(error): raise
+                return []
             last_snapshot = nodes
             return nodes
         until(lambda: (directory/'ready').exists(), 'Fixture did not open')

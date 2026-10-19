@@ -5,6 +5,7 @@ out="${1:?Usage: build.sh OUTPUT_DIRECTORY}"
 mkdir -p "$out/native"
 case "$(uname -s)" in
  Darwin)
+  bash "$root/scripts/build-avalonia-macos.sh" "$out"
   source="$root/desktop/native/vendor/mediaremote-adapter"
   build="$root/artifacts/mediaremote-build"
   cmake -S "$source" -B "$build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0

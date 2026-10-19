@@ -1,0 +1,45 @@
+--- a/native/Avalonia.Native/src/OSX/automation.mm
++++ b/native/Avalonia.Native/src/OSX/automation.mm
+@@ -457,19 +457,35 @@
+ 
+ - (NSArray<NSAccessibilityActionName> *)accessibilityActionNames
+ {
+-    NSAccessibilityActionName scrollToVisible = @"AXScrollToVisible";
+-    NSArray<NSAccessibilityActionName> *base = [super accessibilityActionNames];
+-    if (base == nil)
+-        base = @[];
+-    if ([base containsObject:scrollToVisible])
+-        return base;
+-    return [base arrayByAddingObject:scrollToVisible];
++    NSMutableArray<NSAccessibilityActionName> *actions = [NSMutableArray array];
++    if (_peer->IsEnabled())
++    {
++        if (_peer->IsInvokeProvider() || _peer->IsExpandCollapseProvider() || _peer->IsToggleProvider())
++            [actions addObject:NSAccessibilityPressAction];
++        if (_peer->IsExpandCollapseProvider() && _peer->ExpandCollapseProvider_GetShowsMenu())
++            [actions addObject:NSAccessibilityShowMenuAction];
++        if (_peer->IsRangeValueProvider() && !_peer->RangeValueProvider_IsReadOnly())
++        {
++            [actions addObject:NSAccessibilityIncrementAction];
++            [actions addObject:NSAccessibilityDecrementAction];
++        }
++    }
++    [actions addObject:@"AXScrollToVisible"];
++    return actions;
+ }
+ 
+ - (void)accessibilityPerformAction:(NSAccessibilityActionName)action
+ {
+     if ([action isEqualToString:@"AXScrollToVisible"])
+         _peer->BringIntoView();
++    else if ([action isEqualToString:NSAccessibilityPressAction])
++        [self accessibilityPerformPress];
++    else if ([action isEqualToString:NSAccessibilityShowMenuAction])
++        [self accessibilityPerformShowMenu];
++    else if ([action isEqualToString:NSAccessibilityIncrementAction])
++        [self accessibilityPerformIncrement];
++    else if ([action isEqualToString:NSAccessibilityDecrementAction])
++        [self accessibilityPerformDecrement];
+     else
+         [super accessibilityPerformAction:action];
+ }

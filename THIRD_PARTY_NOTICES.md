@@ -15,3 +15,7 @@ Linux camera capture dynamically links the system's GStreamer libraries (LGPL); 
 ## MediaRemote Adapter (native macOS development port)
 
 Vendored from https://github.com/ungive/mediaremote-adapter at commit `0e82bf1c44ec39554fbfc402ec88a48c6ae2a0fd`. Copyright (c) 2025 Jonas van den Berg and contributors. BSD-3-Clause; full license is in `desktop/native/vendor/mediaremote-adapter/LICENSE` and shipped as `native/MediaRemote-LICENSE.txt`. Built from source; no downloaded executable.
+
+## Avalonia macOS accessibility patch
+
+The macOS native backend is built from Avalonia 12.1.4 with the action-advertisement patch described in `desktop/native/avalonia/README.md`. Upstream is MIT licensed; the full license is in `desktop/native/avalonia/LICENSE` and accompanies macOS packages.
