@@ -5,6 +5,13 @@ out="${1:?Usage: build.sh OUTPUT_DIRECTORY}"
 mkdir -p "$out/native"
 case "$(uname -s)" in
  Darwin)
+  source="$root/desktop/native/vendor/mediaremote-adapter"
+  build="$root/artifacts/mediaremote-build"
+  cmake -S "$source" -B "$build" -DCMAKE_BUILD_TYPE=Release
+  cmake --build "$build" --config Release --parallel 2
+  cp -R "$build/MediaRemoteAdapter.framework" "$out/native/"
+  cp "$source/bin/mediaremote-adapter.pl" "$source/LICENSE" "$out/native/"
+  cp "$build/MediaRemoteAdapterTestClient" "$out/native/"
   bundle="$out/native/TokenDockCamera.app"
   mkdir -p "$bundle/Contents/MacOS"
   cp "$root/desktop/native/Camera-Info.plist" "$bundle/Contents/Info.plist"

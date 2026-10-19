@@ -6,7 +6,7 @@ The owner requires full parity before publication. A token-only prototype, web m
 
 ## Dependencies to replace
 
-Avalonia replaces WPF/window/tray/clipboard integration in the port. Linux uses playerctl/MPRIS and GStreamer; macOS uses AppleScript for Music/Spotify and AVFoundation for camera capture. Shared counters use each OS's SQLite library; native memory adapters are implemented. Windows retains its existing WPF edition.
+Avalonia replaces WPF/window/tray/clipboard integration in the port. Linux uses playerctl/MPRIS and GStreamer; macOS uses a bundled MediaRemote Now Playing adapter (with AppleScript fallback for Music/Spotify) and AVFoundation for camera capture. Shared counters use each OS's SQLite library; native memory adapters are implemented. Windows retains its existing WPF edition.
 
 ## Required parity — validation remains open
 

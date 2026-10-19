@@ -23,6 +23,15 @@ static class DesktopChecks {
   Check(Track.Parse("test\u001fTitle\u001fArtist\u001f\u001f120\u001f500\u001fPlaying").Position==120,"Media timeline clamp");
   Check(Track.Parse("test\u001fTitle\u001fArtist\u001f\u001f1e300\u001f1,5\u001fPlaying").Length==604800,"Untrusted media duration is bounded");
   Check(Track.Parse("test\u001fTitle\u001fArtist\u001f\u001f120\u001f1,5\u001fPlaying").Position==1.5,"Localized player decimals");
+  foreach(var player in new[]{"com.apple.Safari","com.google.Chrome","org.videolan.vlc","com.colliderli.iina","com.tidal.desktop","com.spotify.client"}){
+   var parsed=MacNowPlaying.Parse(System.Text.Json.JsonSerializer.Serialize(new{bundleIdentifier=player,title="Fixture",artist="Test",duration=120,elapsedTimeNow=40,playing=true,artworkData=Convert.ToBase64String(png)}));
+   Check(parsed.Track.Player==player&&parsed.Track.Position==40&&parsed.Track.Playing,"Universal macOS session metadata");Check(parsed.Artwork!=null,"Universal macOS artwork");
+  }
+  Check(MacNowPlaying.Parse("null").Track==Track.Empty,"Closed macOS session clears metadata");
+  Check(MacNowPlaying.Parse("{\"bundleIdentifier\":\"fixture\",\"title\":\"T\",\"duration\":-1,\"elapsedTimeNow\":1e300,\"artworkData\":\"invalid!\"}").Artwork==null,"Malformed artwork cannot break metadata");
+  foreach(var invalid in new[]{"[]","{","{\"x\":"+new string('[',20)+"0"+new string(']',20)+"}"}){bool rejected=false;try{MacNowPlaying.Parse(invalid);}catch(IOException){rejected=true;}Check(rejected,"Malformed Now Playing payload rejected");}
+  Check(MacNowPlaying.Control("position",1.5).SequenceEqual(new[]{"seek","1500000"}),"Native seek uses microseconds");
+  Check(MacNowPlaying.Control("next",0).SequenceEqual(new[]{"send","4"})&&MacNowPlaying.Control("previous",0)[1]=="5"&&MacNowPlaying.Control("play-pause",0)[1]=="2","Native transport command mapping");
   Check(Copies.Excluded(["org.nspasteboard.ConcealedType"]),"Concealed clipboard payload is excluded");
   using var dock=new DockWindow(true);dock.Show();
   foreach(var edge in Enum.GetValues<Edge>())foreach(var module in new[]{"all","codex","music","clipboard","camera","cat","settings"}){

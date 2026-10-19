@@ -25,13 +25,15 @@ Windows edition. It is **not a supported release yet**. The Windows WPF app in
 | Integration | Linux | macOS |
 | --- | --- | --- |
 | UI/clipboard/tray/drop | Avalonia native X11 backend | Avalonia native Cocoa backend |
-| Music | MPRIS via installed `playerctl` | Apple Music and Spotify via AppleScript |
+| Music | MPRIS via installed `playerctl` | System Now Playing via bundled MediaRemote adapter; AppleScript fallback for Music/Spotify |
 | Camera | GStreamer `autovideosrc`, BGRA, 640×480 at 15 fps | AVFoundation video-only helper with its own permission bundle |
 | Memory | `/proc/meminfo`, MemAvailable | Mach/sysctl, free + inactive estimate |
 | SQLite | System libsqlite3.so.0 | System libsqlite3.dylib |
 
-macOS does **not** yet offer universal system-player coverage: browser sessions
-and other players need an additional supported integration. Linux native Wayland
+macOS reads the system-selected session, including browsers and third-party players
+that publish Now Playing metadata. Apps that do not expose a session cannot be
+controlled through this API. The adapter uses a private Apple framework; OS updates
+can break it. Apple Music/Spotify remain fallback adapters. Linux native Wayland
 placement, mixed-DPI display changes, external drag/drop target behavior,
 accessibility and physical camera permissions/shutdown remain validation gates.
 Do not infer full parity from a successful build or fixture screenshot.

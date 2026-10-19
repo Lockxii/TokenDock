@@ -11,3 +11,7 @@ Self-contained downloads include Microsoft .NET runtime notices. Windows media, 
 The native desktop port uses [Avalonia](https://github.com/AvaloniaUI/Avalonia) (MIT), its Fluent theme/headless test backend, and the transitive SkiaSharp/HarfBuzzSharp rendering stack. SkiaSharp and HarfBuzzSharp bindings are MIT; native Skia uses BSD-style terms and HarfBuzz uses its upstream permissive license. Preserve dependency and runtime notices in distribution packages.
 
 Linux camera capture dynamically links the system's GStreamer libraries (LGPL); music calls the separately installed [playerctl](https://github.com/altdesktop/playerctl) (LGPL). These tools/libraries are not vendored in the repository. The isolated music test uses dbus-next (MIT), only on CI. macOS AVFoundation, AppKit, AppleScript and CoreVideo are operating-system components. Apple Music/Spotify artwork is user-session data and is not redistributed.
+
+## MediaRemote Adapter (native macOS development port)
+
+Vendored from https://github.com/ungive/mediaremote-adapter at commit `0e82bf1c44ec39554fbfc402ec88a48c6ae2a0fd`. Copyright (c) 2025 Jonas van den Berg and contributors. BSD-3-Clause; full license is in `desktop/native/vendor/mediaremote-adapter/LICENSE` and shipped as `native/LICENSE`. Built from source; no downloaded executable.

@@ -24,19 +24,24 @@ sealed class Music:IDisposable {
  public async Task Refresh(){
   if(!enabled||busy||disposed)return;busy=true;int version=generation;
   try{
-   string value;
+   string value;Track? nativeTrack=null;byte[]? nativeArt=null;bool systemPlayer=false;
    if(OperatingSystem.IsLinux()){
     const string format="{{playerName}}\u001f{{title}}\u001f{{artist}}\u001f{{mpris:artUrl}}\u001f{{mpris:length / 1000000}}\u001f{{position / 1000000}}\u001f{{status}}";
     value=await ProcessRunner.Run("playerctl",["metadata","--format",format],stop.Token);
-   }else if(OperatingSystem.IsMacOS())value=await Mac("status");
+   }else if(OperatingSystem.IsMacOS()){
+    if(MacNowPlaying.Available){
+     try{var snapshot=MacNowPlaying.Parse(await MacNowPlaying.Run(["get","--now"],stop.Token));nativeTrack=snapshot.Track;nativeArt=snapshot.Artwork;systemPlayer=true;macPlayer="system";value="";}
+     catch(Exception e)when(e is IOException or OperationCanceledException){value=await Mac("status");}
+    }else value=await Mac("status");
+   }
    else{Status="Use the Windows edition for native media integration.";return;}
-   var track=Track.Parse(value);byte[]? art=Artwork;
+   var track=systemPlayer?nativeTrack!:Track.Parse(value);byte[]? art=systemPlayer?nativeArt:Artwork;
    string key=track.Artwork+"|"+track.Title;
-   if(key!=artKey){art=await ReadArt(track.Artwork);}
+   if(!systemPlayer&&key!=artKey){art=await ReadArt(track.Artwork);}
    if(disposed||!enabled||version!=generation)return;
    Track=track;sampled=DateTime.UtcNow;Artwork=art;artKey=key;Status="";Changed?.Invoke();
   }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException or HttpRequestException){
-   if(!disposed&&enabled&&version==generation){Track=Track.Empty;Artwork=null;artKey=null;Status=OperatingSystem.IsLinux()?"No MPRIS player. Install playerctl if missing.":"Open Music or Spotify and allow Automation in System Settings.";Changed?.Invoke();}
+   if(!disposed&&enabled&&version==generation){Track=Track.Empty;Artwork=null;artKey=null;Status=OperatingSystem.IsLinux()?"No MPRIS player. Install playerctl if missing.":"No Now Playing session. Start playback in a compatible player.";Changed?.Invoke();}
   }finally{busy=false;}
  }
  async Task<byte[]?> ReadArt(string location){
@@ -69,9 +74,12 @@ sealed class Music:IDisposable {
  public async Task Command(string command,double value=0){
   if(!enabled||command is not("play-pause" or "previous" or "next" or "position"))return;
   try{
-   string number=Math.Clamp(value,0,Track.Length).ToString("0.###",CultureInfo.InvariantCulture);
+   string number=Math.Clamp(double.IsFinite(value)?value:0,0,Track.Length).ToString("0.###",CultureInfo.InvariantCulture);
    if(OperatingSystem.IsLinux())await ProcessRunner.Run("playerctl",command=="position"?["--player",Track.Player,command,number]:["--player",Track.Player,command],stop.Token);
-   else if(OperatingSystem.IsMacOS())await Mac(command,number);
+   else if(OperatingSystem.IsMacOS()){
+    if(macPlayer=="system")await MacNowPlaying.Run(MacNowPlaying.Control(command,double.Parse(number,CultureInfo.InvariantCulture)),stop.Token);
+    else await Mac(command,number);
+   }
    await Refresh();
   }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException){Status="The player did not accept this control.";Changed?.Invoke();}
  }

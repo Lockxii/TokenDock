@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +29,11 @@ jobs:
       - name: Linux music integration (isolated D-Bus fixture)
         if: runner.os == 'Linux'
         run: dbus-run-session -- /usr/bin/python3 desktop/native/mpris-fixture.py artifacts/desktop/TokenDock.dll
+      - name: macOS Now Playing integration (synthetic player, no audio)
+        if: runner.os == 'macOS'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: python3 desktop/native/mac-media-check.py artifacts/desktop/TokenDock.dll
       - name: Native X11 clipboard (isolated virtual display)
         if: runner.os == 'Linux'
         env:
@@ -47,7 +52,7 @@ jobs:
       - name: Keep validation evidence
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-renders-${{ runner.os }}
+          name: desktop-renders-${{ matrix.os }}
           path: artifacts/desktop-renders/*.png
   core:
     strategy:
