@@ -1,0 +1,68 @@
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+
+namespace TokenDock;
+
+enum CopyKind { Text, Image, Files }
+sealed record CopyItem(CopyKind Kind,string Key,string Text,byte[]? Png,string[] Files,long Bytes) {
+ public string Preview=>Kind switch {CopyKind.Image=>"Photo",CopyKind.Files=>Path.GetFileName(Files[0])+(Files.Length>1?$" +{Files.Length-1}":""),_=>Text.Replace('\r',' ').Replace('\n',' ')};
+ public static CopyItem? FromText(string text)=>string.IsNullOrWhiteSpace(text)||text.Length>32768?null:new(CopyKind.Text,"t:"+text,text,null,[],text.Length*2L);
+ public static CopyItem? FromFiles(string[] files)=>files.Length is 0 or >100||files.Sum(p=>(long)p.Length)>32768||files.Any(p=>!Path.IsPathFullyQualified(p)||p.Contains('\0'))?null:new(CopyKind.Files,"f:"+string.Join('\0',files),"",null,files.ToArray(),files.Sum(p=>p.Length*2L));
+ public static CopyItem? FromPng(byte[] png,string[]? files=null){
+  if(png.Length is <24 or >16*1024*1024||!png.AsSpan(0,8).SequenceEqual(new byte[]{137,80,78,71,13,10,26,10}))return null;
+  int w=BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16,4)),h=BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20,4));
+  if(w<=0||h<=0||(long)w*h>4*1024*1024)return null;
+  return new(CopyKind.Image,"i:"+Convert.ToHexString(SHA256.HashData(png)),"",png.ToArray(),files??[],(long)w*h*4);
+ }
+ public static CopyItem? FromBitmap(Bitmap bitmap){
+  if((long)bitmap.PixelSize.Width*bitmap.PixelSize.Height>4*1024*1024)return null;
+  using var bytes=new MemoryStream();bitmap.Save(bytes,new PngBitmapEncoderOptions());return FromPng(bytes.ToArray());
+ }
+ public async Task<DataTransfer> Transfer(TopLevel window){
+  var data=new DataTransfer();var item=new DataTransferItem();
+  if(Kind==CopyKind.Text)item.SetText(Text);
+  if(Png!=null)item.SetBitmap(new Bitmap(new MemoryStream(Png)));
+  if(Kind!=CopyKind.Files)data.Add(item);
+  foreach(var path in Files){var file=await window.StorageProvider.TryGetFileFromPathAsync(path);if(file!=null)data.Add(DataTransferItem.CreateFile(file));}
+  return data;
+ }
+}
+sealed class CopyHistory {
+ readonly List<CopyItem> items=[];
+ public IReadOnlyList<CopyItem> Items=>items;
+ public void Add(CopyItem? item){if(item==null)return;items.RemoveAll(i=>i.Key==item.Key);items.Insert(0,item);while(items.Count>20||items.Sum(i=>i.Bytes)>32*1024*1024)items.RemoveAt(items.Count-1);}
+ public void Remove(string key)=>items.RemoveAll(i=>i.Key==key);
+ public void Clear()=>items.Clear();
+}
+sealed class Copies:IDisposable {
+ public readonly CopyHistory History=new();public readonly FileShelf Shelf=new();
+ readonly TopLevel window;readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(750)};
+ bool enabled,busy,baseline,disposed;int generation;string? previous;
+ public event Action? Changed;public event Action<string>? Error;
+ public Copies(TopLevel window){this.window=window;timer.Tick+=async(_,_)=>await Poll();}
+ public void Enable(bool value){if(enabled==value)return;enabled=value;generation++;baseline=false;previous=null;if(value)timer.Start();else timer.Stop();}
+ async Task Poll(){
+  if(!enabled||busy||disposed||window.Clipboard==null)return;busy=true;int version=generation;
+  try{
+   using var data=await window.Clipboard.TryGetDataAsync();if(data==null)return;
+   CopyItem? item=null;
+   var files=(await data.TryGetFilesAsync()??[]).Select(f=>f.TryGetLocalPath()).Where(p=>p!=null).Cast<string>().ToArray();
+   if(files.Length>0)item=CopyItem.FromFiles(files);
+   else if(data.Contains(DataFormat.Bitmap)){using var bitmap=await data.TryGetBitmapAsync();if(bitmap!=null)item=CopyItem.FromBitmap(bitmap);}
+   else if(data.Contains(DataFormat.Text))item=CopyItem.FromText(await data.TryGetTextAsync()??"");
+   if(disposed||!enabled||version!=generation)return;
+   if(!baseline){baseline=true;previous=item?.Key;return;}
+   if(item!=null&&item.Key!=previous){previous=item.Key;History.Add(item);Changed?.Invoke();}
+  }catch(Exception e)when(e is IOException or InvalidOperationException or ArgumentException){Error?.Invoke("Clipboard is temporarily unavailable.");}
+  finally{busy=false;}
+ }
+ public async Task Store(string[] paths){try{var item=await Shelf.Store(paths);if(!disposed){History.Add(item);Changed?.Invoke();}}catch(Exception e)when(e is IOException or UnauthorizedAccessException){Error?.Invoke(e.Message);}}
+ public void Add(CopyItem item){History.Add(item);Changed?.Invoke();}
+ public async Task Copy(CopyItem item){if(window.Clipboard==null)return;previous=item.Key;await window.Clipboard.SetDataAsync(await item.Transfer(window));}
+ public void Dispose(){disposed=true;Enable(false);timer.Stop();Shelf.Dispose();History.Clear();}
+}

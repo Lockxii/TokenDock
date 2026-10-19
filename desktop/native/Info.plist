@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleName</key><string>TokenDock</string>
+  <key>CFBundleDisplayName</key><string>TokenDock</string>
+  <key>CFBundleIdentifier</key><string>io.github.lockxii.tokendock</string>
+  <key>CFBundleExecutable</key><string>TokenDock</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>0.3.0</string>
+  <key>CFBundleVersion</key><string>3</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>LSUIElement</key><true/>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSCameraUsageDescription</key><string>TokenDock shows a preview only while the Camera panel is open and saves photos you take.</string>
+  <key>NSAppleEventsUsageDescription</key><string>TokenDock reads the current track and sends playback controls to your music player when Music is enabled.</string>
+</dict></plist>

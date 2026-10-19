@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <AssemblyName>TokenDock</AssemblyName><ApplicationIcon>../assets/tokendock.ico</ApplicationIcon>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Headless" Version="12.1.4" />
+    <Compile Include="../Meter.cs" Link="Meter.cs" />
+    <Compile Include="../Sqlite.cs" Link="Sqlite.cs" />
+    <Compile Include="../MemoryInfo.cs" Link="MemoryInfo.cs" />
+    <Compile Include="../next/Personalization.cs" Link="Personalization.cs" />
+    <Compile Include="../next/FileShelf.cs" Link="FileShelf.cs" />
+    <Content Include="../assets/*.png;../assets/*.ico" Link="assets/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="native/music.applescript" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

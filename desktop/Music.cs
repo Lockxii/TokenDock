@@ -1,0 +1,65 @@
+using System.Globalization;
+using Avalonia.Threading;
+namespace TokenDock;
+
+sealed record Track(string Player,string Title,string Artist,string Artwork,double Length,double Position,bool Playing) {
+ public static Track Empty=new("","Nothing playing","","",0,0,false);
+ public static Track Parse(string text){
+  var p=text.Split('\u001f');if(p.Length!=7)throw new IOException("Invalid media metadata.");
+  double Number(string s)=>double.TryParse(s,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)?Math.Max(0,n):0;
+  double length=Number(p[4]);return new(p[0],p[1],p[2],p[3],length,Math.Min(length,Number(p[5])),p[6] is "Playing" or "playing");
+ }
+}
+sealed class Music:IDisposable {
+ readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromSeconds(2)};readonly CancellationTokenSource stop=new();
+ readonly string artworkPath=Path.Combine(Path.GetTempPath(),"tokendock-art-"+Guid.NewGuid().ToString("N")+".jpg");
+ readonly HttpClient http=new(){Timeout=TimeSpan.FromSeconds(5)};
+ bool enabled,busy,disposed;int generation;string? artKey;DateTime sampled;
+ public Track Track{get;private set;}=Track.Empty;public byte[]? Artwork{get;private set;}public string Status{get;private set;}="";
+ public event Action? Changed;
+ public double Position=>Math.Min(Track.Length,Track.Position+(Track.Playing?(DateTime.UtcNow-sampled).TotalSeconds:0));
+ public Music(){timer.Tick+=async(_,_)=>await Refresh();}
+ public void Enable(bool value){if(enabled==value)return;enabled=value;generation++;if(value){timer.Start();_=Refresh();}else{timer.Stop();Track=Track.Empty;Artwork=null;artKey=null;Changed?.Invoke();}}
+ public async Task Refresh(){
+  if(!enabled||busy||disposed)return;busy=true;int version=generation;
+  try{
+   string value;
+   if(OperatingSystem.IsLinux()){
+    const string format="{{playerName}}\u001f{{title}}\u001f{{artist}}\u001f{{mpris:artUrl}}\u001f{{mpris:length / 1000000}}\u001f{{position / 1000000}}\u001f{{status}}";
+    value=await ProcessRunner.Run("playerctl",["metadata","--format",format],stop.Token);
+   }else if(OperatingSystem.IsMacOS())value=await Mac("status");
+   else{Status="Use the Windows edition for native media integration.";return;}
+   var track=Track.Parse(value);byte[]? art=Artwork;
+   string key=track.Artwork+"|"+track.Title;
+   if(key!=artKey){art=await ReadArt(track.Artwork);}
+   if(disposed||!enabled||version!=generation)return;
+   Track=track;sampled=DateTime.UtcNow;Artwork=art;artKey=key;Status="";Changed?.Invoke();
+  }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException or HttpRequestException){
+   if(!disposed&&enabled&&version==generation){Track=Track.Empty;Artwork=null;artKey=null;Status=OperatingSystem.IsLinux()?"No MPRIS player. Install playerctl if missing.":"Open Music or Spotify and allow Automation in System Settings.";Changed?.Invoke();}
+  }finally{busy=false;}
+ }
+ async Task<byte[]?> ReadArt(string location){
+  try{
+   Stream stream;
+   if(Path.IsPathFullyQualified(location)&&File.Exists(location)){if(new FileInfo(location).Length>4*1024*1024)return null;stream=File.OpenRead(location);}
+   else if(Uri.TryCreate(location,UriKind.Absolute,out var uri)&&uri.IsFile){if(new FileInfo(uri.LocalPath).Length>4*1024*1024)return null;stream=File.OpenRead(uri.LocalPath);}
+   else if(Uri.TryCreate(location,UriKind.Absolute,out uri)&&uri.Scheme=="https")stream=await http.GetStreamAsync(uri,stop.Token);
+   else return null;
+   await using(stream){using var bytes=new MemoryStream();byte[] buffer=new byte[16384];int n;while((n=await stream.ReadAsync(buffer,stop.Token))>0){if(bytes.Length+n>4*1024*1024)return null;bytes.Write(buffer,0,n);}return ImageBytes.Valid(bytes.ToArray())?bytes.ToArray():null;}
+  }catch(Exception e)when(e is IOException or UnauthorizedAccessException or HttpRequestException or OperationCanceledException){return null;}
+ }
+ Task<string> Mac(string command,string? value=null)=>ProcessRunner.Run("/usr/bin/osascript",new[]{Path.Combine(AppContext.BaseDirectory,"native","music.applescript"),command,value??"",artworkPath},stop.Token);
+ public async Task Command(string command,double value=0){
+  if(!enabled||command is not("play-pause" or "previous" or "next" or "position"))return;
+  try{
+   string number=Math.Clamp(value,0,Track.Length).ToString("0.###",CultureInfo.InvariantCulture);
+   if(OperatingSystem.IsLinux())await ProcessRunner.Run("playerctl",command=="position"?["--player",Track.Player,command,number]:["--player",Track.Player,command],stop.Token);
+   else if(OperatingSystem.IsMacOS())await Mac(command,number);
+   await Refresh();
+  }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException){Status="The player did not accept this control.";Changed?.Invoke();}
+ }
+ public void Dispose(){disposed=true;timer.Stop();stop.Cancel();http.Dispose();try{File.Delete(artworkPath);}catch(IOException){}catch(UnauthorizedAccessException){}}
+}
+static class ImageBytes {
+ public static bool Valid(byte[] bytes){using var data=SkiaSharp.SKData.CreateCopy(bytes);using var codec=SkiaSharp.SKCodec.Create(data);return codec!=null&&codec.Info.Width>0&&codec.Info.Height>0&&(long)codec.Info.Width*codec.Info.Height<=4*1024*1024;}
+}

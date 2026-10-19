@@ -6,6 +6,31 @@ on:
 permissions:
   contents: read
 jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Linux native dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libfontconfig1 libice6 libsm6
+      - name: Build desktop
+        run: dotnet publish desktop -c Release --no-self-contained -o artifacts/desktop
+      - name: Build native camera and verify synthetic transport
+        run: bash desktop/native/build.sh artifacts/desktop
+      - name: Desktop and module checks (no hardware)
+        run: dotnet artifacts/desktop/TokenDock.dll --check artifacts/desktop-renders
+      - name: Keep validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-renders-${{ runner.os }}
+          path: artifacts/desktop-renders/*.png
   core:
     strategy:
       fail-fast: false
