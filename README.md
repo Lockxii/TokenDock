@@ -36,7 +36,7 @@ A native **C# / WPF / .NET 10** desktop app with no embedded browser. Dock it to
 | Linux | Not available; full feature parity required before release |
 | macOS | Not available; full feature parity required before release |
 
-**The current app is Windows-only.** WPF, media and capture integrations need a real port. A token-only prototype will not be presented as a complete release. See the [Linux/macOS parity requirements](docs/PLATFORMS.md). No Linux/macOS binaries are available yet.
+**The released app is Windows-only.** A real Avalonia desktop port now exists in [desktop/](desktop/README.md), including inline music, Clipboard and native camera adapters. It is under development and has not passed the full [Linux/macOS release gate](docs/PLATFORMS.md). No Linux/macOS release binaries are available yet.
 
 ## Contents
 

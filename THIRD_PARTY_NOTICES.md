@@ -4,6 +4,10 @@ Claude, OpenAI/Codex and OpenCode logos come from [The SVG](https://github.com/G
 
 The cat, Music/Clipboard icons and app icon were generated with imagegen. Camera and playback geometry is drawn in code. User artwork/photos are not distributed. Documentation artwork is a synthetic illustration drawn by MediaDemo.cs.
 
-The notch concept is inspired by [boring.notch](https://github.com/TheBoredTeam/boring.notch). No Swift code is included; TokenDock is a Windows WPF implementation.
+The notch concept is inspired by [boring.notch](https://github.com/TheBoredTeam/boring.notch). No code from that project is included. The Swift camera helper in `desktop/native/` was written for TokenDock.
 
 Self-contained downloads include Microsoft .NET runtime notices. Windows media, camera and clipboard APIs remain system components.
+
+The native desktop port uses [Avalonia](https://github.com/AvaloniaUI/Avalonia) (MIT), its Fluent theme/headless test backend, and the transitive SkiaSharp/HarfBuzzSharp rendering stack. SkiaSharp and HarfBuzzSharp bindings are MIT; native Skia uses BSD-style terms and HarfBuzz uses its upstream permissive license. Preserve dependency and runtime notices in distribution packages.
+
+Linux camera capture dynamically links the system's GStreamer libraries (LGPL); music calls the separately installed [playerctl](https://github.com/altdesktop/playerctl) (LGPL). These tools/libraries are not vendored in the repository. The isolated music test uses dbus-next (MIT), only on CI. macOS AVFoundation, AppKit, AppleScript and CoreVideo are operating-system components. Apple Music/Spotify artwork is user-session data and is not redistributed.

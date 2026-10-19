@@ -1,14 +1,14 @@
 # Linux and macOS: full-parity release gate
 
-**No supported Linux/macOS application release yet.** Shared-core implementation has started in [portable/](../portable/README.md), with native SQLite and RAM adapters and cross-OS integration checks. The desktop port is not complete; these checks do not establish module parity.
+**No supported Linux/macOS application release yet.** The executable [Avalonia port](../desktop/README.md) now includes the dock, music, Clipboard/file shelf, RAM and native camera helpers. Shared-core and desktop/native fixture checks run on Linux/macOS. Real-world validation and the remaining coverage gaps below still prevent publication.
 
 The owner requires full parity before publication. A token-only prototype, web mockup or compatibility-layer build does not qualify.
 
 ## Dependencies to replace
 
-WPF rendering, WinForms tray, Win32 placement, GSMTC music, WinRT MediaCapture, user32 clipboard, GlobalMemoryStatusEx and winsqlite3 are Windows-specific. Parsing, preferences and animation math contain reusable logic, but native dependencies must be separated and tested. No replacement framework is committed yet.
+Avalonia replaces WPF/window/tray/clipboard integration in the port. Linux uses playerctl/MPRIS and GStreamer; macOS uses AppleScript for Music/Spotify and AVFoundation for camera capture. Shared counters use each OS's SQLite library; native memory adapters are implemented. Windows retains its existing WPF edition.
 
-## Required parity — all pending
+## Required parity — validation remains open
 
 | Feature | Linux | macOS |
 | --- | --- | --- |

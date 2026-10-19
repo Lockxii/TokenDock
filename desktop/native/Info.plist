@@ -5,6 +5,7 @@
   <key>CFBundleDisplayName</key><string>TokenDock</string>
   <key>CFBundleIdentifier</key><string>io.github.lockxii.tokendock</string>
   <key>CFBundleExecutable</key><string>TokenDock</string>
+  <key>CFBundleIconFile</key><string>TokenDock.icns</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.3.0</string>
   <key>CFBundleVersion</key><string>3</string>

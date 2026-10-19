@@ -27,6 +27,7 @@ sealed class Camera:IDisposable {
  readonly string helper;readonly bool fixture;
  public CameraFrame? Frame{get;private set;}public string Status{get;private set;}="Opening camera…";
  public event Action? Changed;
+ internal void SetFixture(CameraFrame frame){if(!fixture)throw new InvalidOperationException("Fixture capture only.");Frame=frame;Status="Synthetic preview";}
  internal static string HelperPath=>OperatingSystem.IsMacOS()?Path.Combine(AppContext.BaseDirectory,"native","TokenDockCamera.app","Contents","MacOS","tokendock-camera"):Path.Combine(AppContext.BaseDirectory,"native","tokendock-camera");
  public Camera(bool fixture=false,string? helper=null){this.fixture=fixture;this.helper=helper??HelperPath;}
  public void SetActive(bool active){
@@ -44,7 +45,7 @@ sealed class Camera:IDisposable {
    if(!File.Exists(helper))throw new IOException("Camera adapter is missing from this build.");
    var start=new ProcessStartInfo(helper){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};start.ArgumentList.Add(fixture?"--self-test":"--capture");
    using var process=new Process{StartInfo=start};if(!process.Start())throw new IOException("Camera could not start.");
-   using var registration=cancel.Token.Register(()=>{try{if(!process.HasExited)process.Kill(true);}catch(InvalidOperationException){}});
+   using var registration=cancel.Token.Register(()=>Terminate(process));
    var errors=ReadError(process.StandardError,cancel.Token);
    try{
     var stream=process.StandardOutput.BaseStream;byte[] header=new byte[12];
@@ -55,12 +56,13 @@ sealed class Camera:IDisposable {
      await Dispatcher.UIThread.InvokeAsync(()=>{if(!disposed&&version==generation&&!cancel.IsCancellationRequested){Frame=frame;Status="Live";Changed?.Invoke();}});
     }
    }catch(EndOfStreamException){if(!cancel.IsCancellationRequested){await process.WaitForExitAsync(cancel.Token);var error=await errors;throw new IOException(string.IsNullOrWhiteSpace(error)?"Camera stream ended.":error);}}
-   finally{if(!process.HasExited)process.Kill(true);await process.WaitForExitAsync(CancellationToken.None);try{await errors;}catch(OperationCanceledException){}}
+   finally{Terminate(process);await process.WaitForExitAsync(CancellationToken.None);try{await errors;}catch(OperationCanceledException){}}
   }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException){
    await Dispatcher.UIThread.InvokeAsync(()=>{if(!disposed&&version==generation&&!cancel.IsCancellationRequested){Status=e.Message;Frame=null;Changed?.Invoke();}});
   }finally{await Dispatcher.UIThread.InvokeAsync(()=>{if(ReferenceEquals(session,cancel))session=null;});cancel.Dispose();}
  }
  static async Task<string> ReadError(StreamReader reader,CancellationToken token){char[] buffer=new char[1024];string text="";int n;while((n=await reader.ReadAsync(buffer,token))>0)if(text.Length<8192)text+=new string(buffer,0,Math.Min(n,8192-text.Length));return text.Trim();}
+ static void Terminate(Process process){try{if(!process.HasExited)process.Kill(true);}catch(InvalidOperationException){}catch(System.ComponentModel.Win32Exception){}}
  public async Task<CopyItem> Photo(){
   var frame=Frame??throw new IOException("Wait for a camera frame.");
   var png=await Task.Run(frame.RoundPng);

@@ -23,12 +23,11 @@ verify that read-only queries cannot modify or create a database.
 The `Native port integration` workflow runs these checks on Windows, Linux and
 macOS. It intentionally creates no release or downloadable application artifact.
 
-## Still required for full parity
+## Desktop implementation
 
-- A portable desktop surface with placement, tray, input, transitions and editor.
-- Linux MPRIS and macOS player integration with artwork, controls and seeking.
-- Native clipboard image/file formats, opt-in observation and external drag/drop.
-- Camera permission and capture adapters, lifecycle/race checks and round photos.
-- Process memory consumers, native packaging, accessibility and real desktop QA.
+The [desktop application](../desktop/README.md) now implements the surface,
+modules and native capture adapters. This directory remains only the shared-core
+harness. See its README for implemented behavior, tested scope and unresolved
+platform validation; neither executable is a supported Linux/macOS release yet.
 
 The release gate in [PLATFORMS.md](../docs/PLATFORMS.md) remains closed.

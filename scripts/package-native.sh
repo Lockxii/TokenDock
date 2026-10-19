@@ -16,11 +16,22 @@ if [[ -e "$out" ]]; then echo "Refusing to overwrite an existing package directo
 mkdir -p "$out"
 dotnet publish desktop -c Release -r "$runtime" --self-contained true -o "$out/publish"
 bash desktop/native/build.sh "$out/publish"
+cp LICENSE "$out/publish/TokenDock-LICENSE.txt"
+cp THIRD_PARTY_NOTICES.md "$out/publish/TokenDock-NOTICES.md"
+cp desktop/README.md "$out/publish/DEVELOPMENT.md"
 if [[ "$runtime" == osx-* ]]; then
   bundle="$out/TokenDock.app"
-  mkdir -p "$bundle/Contents/MacOS"
+  mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
   cp -R "$out/publish/." "$bundle/Contents/MacOS/"
   cp desktop/native/Info.plist "$bundle/Contents/Info.plist"
+  iconset="$out/TokenDock.iconset"
+  mkdir -p "$iconset"
+  for size in 16 32 128 256 512; do
+    sips -z "$size" "$size" assets/tokendock-icon.png --out "$iconset/icon_${size}x${size}.png" >/dev/null
+    double=$((size * 2))
+    sips -z "$double" "$double" assets/tokendock-icon.png --out "$iconset/icon_${size}x${size}@2x.png" >/dev/null
+  done
+  iconutil -c icns "$iconset" -o "$bundle/Contents/Resources/TokenDock.icns"
   # Ad-hoc signing is only for local development. It is not notarization.
   codesign --force --sign - "$bundle/Contents/MacOS/native/TokenDockCamera.app"
   codesign --force --deep --sign - --entitlements desktop/native/entitlements.plist "$bundle"
@@ -29,4 +40,4 @@ else
   mkdir -p "$out/publish/share/applications"
   printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=TokenDock' "Exec=$out/publish/TokenDock" 'Terminal=false' 'Categories=Utility;' > "$out/publish/share/applications/tokendock.desktop"
 fi
-echo "Development package only: $out. Native parity and distribution approval gates remain closed."
+echo "Development package only: $out. Native parity and distribution validation gates remain closed."

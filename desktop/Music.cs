@@ -19,6 +19,7 @@ sealed class Music:IDisposable {
  public event Action? Changed;
  public double Position=>Math.Min(Track.Length,Track.Position+(Track.Playing?(DateTime.UtcNow-sampled).TotalSeconds:0));
  public Music(){timer.Tick+=async(_,_)=>await Refresh();}
+ internal void SetFixture(byte[] artwork){Track=new("Fixture","Signal Coast","Synthetic artist","",204,45,true);Artwork=artwork;sampled=DateTime.UtcNow;}
  public void Enable(bool value){if(enabled==value)return;enabled=value;generation++;if(value){timer.Start();_=Refresh();}else{timer.Stop();Track=Track.Empty;Artwork=null;artKey=null;Changed?.Invoke();}}
  public async Task Refresh(){
   if(!enabled||busy||disposed)return;busy=true;int version=generation;
