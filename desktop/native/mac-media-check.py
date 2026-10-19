@@ -12,9 +12,11 @@ with (bundle / 'Contents/Info.plist').open('wb') as out:
 subprocess.run(['swiftc', '-swift-version', '5', str(root / 'MediaFixture.swift'), '-o', str(binary),
                 '-framework', 'AppKit', '-framework', 'MediaPlayer'], check=True)
 subprocess.run(['codesign', '--force', '--sign', '-', str(bundle)], check=True)
+target = pathlib.Path(sys.argv[1]).resolve()
+command = ["dotnet", str(target)] if target.suffix == ".dll" else [str(target)]
 process = subprocess.Popen([str(binary)])
 try:
-    subprocess.run(['dotnet', sys.argv[1], '--media-check'], check=True, timeout=90)
+    subprocess.run(command + ['--media-check'], check=True, timeout=90)
 finally:
     process.terminate()
     try:
@@ -24,4 +26,4 @@ finally:
         process.wait(timeout=5)
 
 # A disappeared process must not keep a ghost track in the dock.
-subprocess.run(['dotnet', sys.argv[1], '--media-empty-check'], check=True, timeout=20)
+subprocess.run(command + ['--media-empty-check'], check=True, timeout=20)

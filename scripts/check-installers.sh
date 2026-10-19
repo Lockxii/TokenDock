@@ -43,6 +43,10 @@ else
     sudo installer -pkg "$out/TokenDock-$runtime.pkg" -target /
     codesign --verify --deep --strict /Applications/TokenDock.app
     /Applications/TokenDock.app/Contents/MacOS/TokenDock --check "$out/$attempt-checks"
+    if [[ "$attempt" == installed ]]; then
+      /Applications/TokenDock.app/Contents/MacOS/TokenDock --native-clipboard-check
+      python3 desktop/native/mac-media-check.py /Applications/TokenDock.app/Contents/MacOS/TokenDock
+    fi
   done
   cleanup
   [[ ! -e /Applications/TokenDock.app ]]
