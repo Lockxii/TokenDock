@@ -38,6 +38,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
             global last_snapshot
             if mac:
                 result = subprocess.run([str(probe), str(app.pid), 'press-camera' if press else 'snapshot'], capture_output=True, text=True, timeout=15)
+                if press: print(result.stderr, flush=True)
                 if result.returncode: return []
                 last_snapshot = json.loads(result.stdout)
                 return last_snapshot
@@ -60,9 +61,11 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
             last_snapshot = nodes
             return nodes
         until(lambda: (directory/'ready').exists(), 'Fixture did not open')
-        until(lambda: any(n['name']=='Camera' and n['actions'] for n in tree()), 'Camera action absent from native accessibility tree')
+        until(lambda: any(n['name']=='Camera' for n in tree()), 'Camera action absent from native accessibility tree')
+        advertised = any(n['name']=='Camera' and n['actions'] for n in tree())
         tree(True)
         until(lambda: any(n['name']=='Take photo' for n in tree()), 'Native accessibility action did not open Camera')
+        assert advertised, 'Camera is invokable but does not advertise native accessibility actions'
         expectations = {'music':['Playback position','Previous track','Play or pause','Next track'], 'clipboard':['Clear','Remove item'], 'camera':['Take photo'], 'settings':['Apply','Cancel','Featured token counter source']}
         for module, names in expectations.items():
             (directory/'module.next').write_text(module)

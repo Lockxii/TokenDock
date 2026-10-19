@@ -20,13 +20,16 @@ var pressed = false
 func visit(_ element: AXUIElement, _ depth: Int) {
     guard depth < 32, nodes.count < 2000 else { return }
     let role = attribute(element, kAXRoleAttribute) as? String ?? ""
+    if role == "AXMenuBar" { return } // Inspect fixture windows, not system menus.
     let name = [attribute(element, kAXTitleAttribute) as? String, attribute(element, kAXDescriptionAttribute) as? String].compactMap { $0 }.first { !$0.isEmpty } ?? ""
     var names: CFArray?
-    AXUIElementCopyActionNames(element, &names)
+    let actionStatus = AXUIElementCopyActionNames(element, &names)
     let actions = names as? [String] ?? []
-    nodes.append(["name": name, "role": role, "actions": actions])
-    if action == "press-camera" && name == "Camera" && actions.contains(kAXPressAction) && !pressed {
-        pressed = AXUIElementPerformAction(element, kAXPressAction as CFString) == .success
+    nodes.append(["name": name, "role": role, "actions": actions, "actionStatus": actionStatus.rawValue])
+    if action == "press-camera" && name == "Camera" && !pressed {
+        let result = AXUIElementPerformAction(element, kAXPressAction as CFString)
+        FileHandle.standardError.write(Data("Camera AXPress result: \(result.rawValue)\n".utf8))
+        pressed = result == .success
     }
     for child in attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? [] { visit(child, depth + 1) }
 }
