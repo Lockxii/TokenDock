@@ -17,7 +17,11 @@ fi
 out="$root/artifacts/native-$runtime"
 if [[ -e "$out" ]]; then echo "Refusing to overwrite an existing package directory." >&2; exit 1; fi
 mkdir -p "$out"
-dotnet publish desktop -c Release -r "$runtime" --self-contained true -o "$out/publish"
+publish_options=()
+# Keep managed assemblies inside the apphost rather than treating DLLs in
+# Contents/MacOS as separately signed nested code. Native libraries stay external.
+[[ "$runtime" == osx-* ]] && publish_options+=(-p:PublishSingleFile=true)
+dotnet publish desktop -c Release -r "$runtime" --self-contained true "${publish_options[@]}" -o "$out/publish"
 bash desktop/native/build.sh "$out/publish"
 cp LICENSE "$out/publish/TokenDock-LICENSE.txt"
 cp THIRD_PARTY_NOTICES.md "$out/publish/TokenDock-NOTICES.md"

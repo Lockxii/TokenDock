@@ -15,6 +15,7 @@ else
 fi
 # Include the runtime, Skia, Avalonia and MediaRemote binaries, not only the apphost.
 while IFS= read -r -d '' binary; do
+  [[ "$binary" == "$bundle/Contents/MacOS/TokenDock" ]] && continue
   if file -b "$binary" | grep -q 'Mach-O'; then
     codesign "${flags[@]}" "$binary"
   fi
