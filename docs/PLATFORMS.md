@@ -59,3 +59,9 @@ DMGs and PKGs. CI installs/reinstalls/removes its own packages and runs the synt
 app checks from installed and mounted artifacts. This verifies packaging mechanics,
 not Gatekeeper trust: Developer ID signing, notarization and real clean-user startup
 remain release gates. There is still no release/upload step for these binaries.
+
+## Native accessibility and permission checks
+
+CI launches an isolated synthetic dock and reads its accessibility tree from another process: Linux uses AT-SPI (the interface used by Orca), and macOS uses NSAccessibility/AX (used by VoiceOver). The probes check names/roles in music, Copies, camera and settings and invoke the rail's Camera action through the OS accessibility API. This opens a synthetic frame only. macOS preflights existing AX client permission without displaying a prompt or modifying TCC; denial is explicitly **unverified**, never a pass. This validates the bridge, not spoken output or complete usability with Orca/VoiceOver.
+
+Camera error fixtures return denial and device-unavailable failures through the real child-process protocol before any device API runs. Tests verify the error reaches the UI and no stale frame survives. The Mac helper can report its existing authorization status without requesting access; denied and policy-restricted states have distinct guidance. Real TCC prompts/revocation and physical device interruption remain unverified. Synthetic unreadable-file tests also verify that denied shelf imports preserve the original.

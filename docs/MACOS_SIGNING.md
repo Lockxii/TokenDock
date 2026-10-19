@@ -36,3 +36,24 @@ Without the identity/profile variables the same packaging script makes **ad-hoc 
 Verify both architecture artifacts on a clean user account, including the downloaded/quarantined DMG and PKG, nested camera permission and teardown, media permissions, upgrade/removal, and the remaining parity gates in [PLATFORMS.md](PLATFORMS.md). Keep the signature, entitlement, notarization and Gatekeeper reports with the release evidence. Generate final hashes only after stapling. No release workflow or automatic upload of binaries is provided.
 
 References: [Apple notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow), [Apple hardened runtime](https://help.apple.com/xcode/mac/current/en.lproj/devf87a2ac8f.html), [.NET macOS deployment](https://learn.microsoft.com/en-us/dotnet/core/deploying/macos).
+
+## Exact handoff for signing from GitHub-hosted macOS
+
+A personal Mac is not required for the signing job: the project already builds on hosted macOS runners. You do need an active Apple Developer Program membership and permission to create Developer ID certificates for its team.
+
+Prepare these items **in a protected secret store, never in chat or Git**:
+
+| Item | Required contents |
+| --- | --- |
+| Application signing identity | A valid **Developer ID Application** certificate and its matching private key, exported together as a password-protected `.p12`. A `.cer` alone cannot sign. |
+| Installer signing identity | A valid **Developer ID Installer** certificate and its matching private key, also in `.p12`. The two identities may share one export if both private keys are included. |
+| Export password(s) | The password used to encrypt each `.p12`. |
+| Apple team | The Team ID that owns both certificates. |
+| Notarization authentication | The Apple ID associated with the team and an **app-specific password**, not its normal sign-in password. Alternatively, a team App Store Connect API `.p8` private key, Key ID and Issuer ID with the required access. Use one authentication method. |
+| Identity names | Exact `Developer ID Application: … (TEAMID)` and `Developer ID Installer: … (TEAMID)` names. These names and Team ID can be shared as non-secret configuration. |
+
+For a future signing workflow, create a protected GitHub environment named `macos-signing`, restrict it to the reviewed signing ref, and require a maintainer review. Suggested secret names are `MACOS_APP_P12_BASE64`, `MACOS_APP_P12_PASSWORD`, `MACOS_INSTALLER_P12_BASE64`, `MACOS_INSTALLER_P12_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_SPECIFIC_PASSWORD`. Base64 only transports the encrypted export; it is not encryption. These names are a handoff convention, **not an enabled secret-consuming workflow**. The credential-free validation workflow never reads these secrets.
+
+Once configured, a reviewed manual signing job must import the certificates into a temporary keychain, grant codesign access only to the imported signing keys, create the `MACOS_NOTARY_PROFILE` there, invoke the existing package/sign/notarize scripts, and delete the keychain and decrypted exports in an always-run cleanup. Signing must never run on fork/PR code. Do not publish while the remaining parity gates are open, even if notarization is accepted.
+
+No certificate material or private keys are currently configured in this repository. No notarization request has been submitted.

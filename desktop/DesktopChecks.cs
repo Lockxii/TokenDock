@@ -29,6 +29,11 @@ static class DesktopChecks {
    string original=Path.Combine(temp,"file.txt");File.WriteAllText(original,"synthetic file shelf fixture");var shelf=new FileShelf();
    var item=Task.Run(()=>shelf.Store([original])).GetAwaiter().GetResult();Check(item.Files[0]!=original&&File.ReadAllText(item.Files[0])==File.ReadAllText(original),"Drop creates an independent file copy");
    File.WriteAllText(original,"changed original");Check(File.ReadAllText(item.Files[0])=="synthetic file shelf fixture","Shelf preserves the dropped snapshot");
+   if(!OperatingSystem.IsWindows()){
+    var mode=File.GetUnixFileMode(original);File.SetUnixFileMode(original,UnixFileMode.None);bool denied=false;
+    try{Task.Run(()=>shelf.Store([original])).GetAwaiter().GetResult();}catch(Exception e)when(e is IOException or UnauthorizedAccessException){denied=true;}finally{File.SetUnixFileMode(original,mode);}
+    Check(denied,"Unreadable file import reports a permission error");Check(File.ReadAllText(original)=="changed original","Denied import preserves the original");
+   }
    shelf.Dispose();SpinWait.SpinUntil(()=>!File.Exists(item.Files[0]),3000);Check(!File.Exists(item.Files[0])&&File.Exists(original),"Cleanup preserves originals");
   }finally{Directory.Delete(temp,true);}
   var history=new CopyHistory();for(int i=0;i<25;i++)history.Add(CopyItem.FromText("fixture "+i));Check(history.Items.Count==20,"History bound");history.Remove(history.Items[0].Key);Check(history.Items.Count==19,"Individual removal");
