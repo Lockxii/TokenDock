@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +19,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Linux native dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libfontconfig1 libice6 libsm6 playerctl python3-dbus-next xvfb
+        run: sudo apt-get update && sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libfontconfig1 libice6 libsm6 playerctl python3-dbus-next xvfb xdotool desktop-file-utils
       - name: Build desktop
         run: dotnet publish desktop -c Release --no-self-contained -o artifacts/desktop
       - name: Build native camera and verify synthetic transport
@@ -39,6 +39,11 @@ jobs:
         env:
           TOKENDOCK_TEST_DISPLAY: isolated
         run: xvfb-run -a dotnet artifacts/desktop/TokenDock.dll --native-clipboard-check
+      - name: Native cross-process drag/drop (isolated X11)
+        if: runner.os == 'Linux'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: xvfb-run -a -s '-screen 0 1280x800x24' python3 desktop/native/drag-check.py artifacts/desktop/TokenDock.dll
       - name: Native macOS clipboard (disposable CI desktop)
         if: runner.os == 'macOS'
         env:
@@ -49,6 +54,10 @@ jobs:
         run: osacompile -o artifacts/music.scpt desktop/native/music-apple.applescript
       - name: Validate development packaging (not uploaded or released)
         run: bash scripts/package-native.sh "${{ runner.os == 'macOS' && 'osx' || 'linux' }}-${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}"
+      - name: Validate install, reinstall and removal (disposable CI only)
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: bash scripts/check-installers.sh "${{ runner.os == 'macOS' && 'osx' || 'linux' }}-${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}"
       - name: Keep validation evidence
         uses: actions/upload-artifact@v4
         with:

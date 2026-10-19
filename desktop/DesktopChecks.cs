@@ -9,6 +9,17 @@ static class DesktopChecks {
   string directory=args.Length>1?args[1]:Path.Combine(Path.GetTempPath(),"tokendock-render-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
   var spring=new Spring(0){Target=400};for(int i=0;i<8;i++)spring.Step(.016);double before=spring.Value,velocity=spring.Velocity;spring.Target=150;Check(spring.Value==before&&spring.Velocity==velocity,"Retarget preserves motion");for(int i=0;i<100;i++)spring.Step(.016);Check(spring.Value==150,"Interrupted transition settles");
   var area=new PixelRect(-1920,0,1920,1080);foreach(var edge in Enum.GetValues<Edge>()){var position=DockPlacement.Locate(edge,area,new PixelSize(400,200),new PixelPoint(-900,300));Check(area.Contains(position),"Placement on negative-coordinate monitor");}
+  var monitors=new[]{new PixelRect(-1920,24,1920,1056),new PixelRect(0,0,2560,1400),new PixelRect(2560,-900,1600,900)};
+  foreach(var monitor in monitors){var anchor=DockPlacement.Center(monitor);Check(DockPlacement.SelectArea(monitors,anchor)==monitor,"Anchor retains its monitor during resize");
+   foreach(var scale in new[]{1d,1.25,1.5,2d,3d})foreach(var edge in Enum.GetValues<Edge>()){
+    var size=new PixelSize(Math.Min(monitor.Width,(int)(424*scale)),Math.Min(monitor.Height,(int)(580*scale)));
+    var point=DockPlacement.Locate(edge,monitor,size,new PixelPoint(monitor.Right-1,monitor.Bottom-1));
+    Check(point.X>=monitor.X&&point.Y>=monitor.Y&&point.X+size.Width<=monitor.Right&&point.Y+size.Height<=monitor.Bottom,"Mixed-DPI placement remains inside work area");
+   }
+  }
+  Check(DockPlacement.SelectArea(monitors.Skip(1),new PixelPoint(-1500,400))==monitors[1],"Removed monitor falls back to nearest surviving display");
+  Check(DockPlacement.Snap(new PixelPoint(26,300),new PixelSize(100,100),monitors[1],2)==Edge.Left,"Snap distance scales with DPI");
+  Check(DockPlacement.Snap(new PixelPoint(26,300),new PixelSize(100,100),monitors[1],1)==Edge.Floating,"Free placement outside snap distance");
   var pixels=Enumerable.Repeat((byte)255,64*64*4).ToArray();var frame=new CameraFrame(64,64,pixels);var png=frame.RoundPng();Check(CopyItem.FromPng(png)!=null,"Circular photo exports PNG");
   using(var decoded=SKBitmap.Decode(png)){Check(decoded.GetPixel(0,0).Alpha==0,"Photo corners remain transparent");Check(decoded.GetPixel(32,32).Alpha==255,"Photo center remains opaque");}
   foreach(var values in new[]{new[]{-1,10,40},new[]{4000,4000,64000000},new[]{20,20,1}}){byte[] header=new byte[12];for(int i=0;i<3;i++)System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(header.AsSpan(i*4,4),values[i]);bool rejected=false;try{CameraFrame.Header(header);}catch(IOException){rejected=true;}Check(rejected,"Reject invalid camera packet");}

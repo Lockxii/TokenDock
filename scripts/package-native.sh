@@ -37,9 +37,43 @@ if [[ "$runtime" == osx-* ]]; then
   codesign --force --deep --sign - --entitlements desktop/native/entitlements.plist "$bundle"
   codesign --verify --deep --strict "$bundle"
   "$bundle/Contents/MacOS/TokenDock" --check "$out/package-checks"
+  # Development distribution containers; no Developer ID or notarization claim.
+  stage="$out/dmg-root"
+  mkdir -p "$stage"
+  cp -R "$bundle" "$stage/TokenDock.app"
+  ln -s /Applications "$stage/Applications"
+  hdiutil create -volname TokenDock -srcfolder "$stage" -format UDZO "$out/TokenDock-$runtime.dmg"
+  mkdir "$out/pkg-root"
+  cp -R "$bundle" "$out/pkg-root/TokenDock.app"
+  pkgbuild --analyze --root "$out/pkg-root" "$out/components.plist"
+  /usr/libexec/PlistBuddy -c 'Set :0:BundleIsRelocatable false' "$out/components.plist"
+  pkgbuild --root "$out/pkg-root" --component-plist "$out/components.plist" --install-location /Applications --identifier io.github.lockxii.tokendock --version 0.3.0 "$out/TokenDock-$runtime.pkg"
 else
-  mkdir -p "$out/publish/share/applications"
-  printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=TokenDock' "Exec=$out/publish/TokenDock" 'Terminal=false' 'Categories=Utility;' > "$out/publish/share/applications/tokendock.desktop"
   "$out/publish/TokenDock" --check "$out/package-checks"
+  stage="$out/deb-root"
+  mkdir -p "$stage/DEBIAN" "$stage/usr/lib/tokendock" "$stage/usr/bin" "$stage/usr/share/applications" "$stage/usr/share/pixmaps"
+  cp -a "$out/publish/." "$stage/usr/lib/tokendock/"
+  printf '%s\n' '#!/bin/sh' 'exec /usr/lib/tokendock/TokenDock "$@"' > "$stage/usr/bin/tokendock"
+  chmod 755 "$stage/usr/bin/tokendock"
+  cp assets/tokendock-icon.png "$stage/usr/share/pixmaps/tokendock.png"
+  printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=TokenDock' 'Exec=/usr/bin/tokendock' 'Icon=tokendock' 'Terminal=false' 'Categories=Utility;' > "$stage/usr/share/applications/tokendock.desktop"
+  arch=amd64
+  [[ "$runtime" == linux-arm64 ]] && arch=arm64
+  cat > "$stage/DEBIAN/control" <<EOF
+Package: tokendock
+Version: 0.3.0~dev.1
+Architecture: $arch
+Maintainer: TokenDock contributors <noreply@github.com>
+Section: utils
+Priority: optional
+Installed-Size: $(du -sk "$stage/usr" | cut -f1)
+Depends: libicu74 | libicu78 | libicu76 | libicu72, libssl3t64 | libssl3, libc6 (>= 2.35), libgcc-s1, libstdc++6, zlib1g, libfontconfig1, libice6, libsm6, libx11-6, libxrandr2, libxi6, libxcursor1, libsqlite3-0, libgstreamer1.0-0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, playerctl
+Description: TokenDock native development build
+ Inline token, media, clipboard, RAM and photo modules. Not a supported release.
+EOF
+  chmod 755 "$stage/DEBIAN"
+  chmod 644 "$stage/DEBIAN/control"
+  dpkg-deb --build --root-owner-group "$stage" "$out/TokenDock-$runtime.deb"
+  tar -czf "$out/TokenDock-$runtime.tar.gz" -C "$out/publish" .
 fi
 echo "Development package only: $out. Native parity and distribution validation gates remain closed."

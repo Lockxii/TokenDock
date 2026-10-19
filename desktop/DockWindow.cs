@@ -20,19 +20,20 @@ sealed class DockWindow:Window,IDisposable {
  readonly Copies copies;readonly List<Bitmap> transient=[];readonly Dictionary<string,Button> buttons=[];readonly Dictionary<string,TextBlock> counts=[];readonly Dictionary<string,TokenGraph> graphs=[];
  readonly DispatcherTimer live=new(){Interval=TimeSpan.FromMilliseconds(60)};int refreshPending;
  Preferences prefs;Cat? cat;Edge edge=Edge.Top;bool expanded,disposed,dragging,reordering,reduced;string selected="all",pending="all",pressedId="";
- Point press;PixelPoint origin,floating;TrayIcon? tray;MemoryInfo memory;Meter[] meters=[];
+ Point press;PixelPoint dragOffset,floating,anchor;bool shelfDragging;TrayIcon? tray;MemoryInfo memory;Meter[] meters=[];
  TextBlock? featured,counter,details,ramNumber,ramPercent,musicTitle,musicArtist,musicTime,cameraStatus,errorLabel;Slider? seek;ProgressBar? ramBar;Image? cameraImage,musicImage;Button? play;Bitmap? frameBitmap,artBitmap,barArt;byte[]? lastArt;
  readonly StackPanel copyCards=new(){Spacing=8};double targetBody=240;int tick;
  public DockWindow(bool fixture=false){
-  this.fixture=fixture;prefs=fixture?new Preferences{Music=true,ClipboardHistory=true,Camera=true}:Preferences.Load();prefs.Normalize();Enum.TryParse(prefs.DockEdge,out edge);floating=new PixelPoint(prefs.DockX,prefs.DockY);reduced=prefs.ReduceMotion;camera=new Camera(fixture);copies=new Copies(this);if(fixture){byte[] pixels=new byte[128*128*4];for(int y=0;y<128;y++)for(int x=0;x<128;x++){int n=(y*128+x)*4;pixels[n]=180;pixels[n+1]=(byte)(y*2);pixels[n+2]=(byte)(x*2);pixels[n+3]=255;}var frame=new CameraFrame(128,128,pixels);camera.SetFixture(frame);music.SetFixture(frame.RoundPng());copies.Add(CopyItem.FromText("A synthetic clipboard entry")!);copies.Add(CopyItem.FromPng(frame.RoundPng())!);}
+  this.fixture=fixture;prefs=fixture?new Preferences{Music=true,ClipboardHistory=true,Camera=true}:Preferences.Load();prefs.Normalize();Enum.TryParse(prefs.DockEdge,out edge);floating=anchor=new PixelPoint(prefs.DockX,prefs.DockY);reduced=prefs.ReduceMotion;camera=new Camera(fixture);copies=new Copies(this);if(fixture){byte[] pixels=new byte[128*128*4];for(int y=0;y<128;y++)for(int x=0;x<128;x++){int n=(y*128+x)*4;pixels[n]=180;pixels[n+1]=(byte)(y*2);pixels[n+2]=(byte)(x*2);pixels[n+3]=255;}var frame=new CameraFrame(128,128,pixels);camera.SetFixture(frame);music.SetFixture(frame.RoundPng());copies.Add(CopyItem.FromText("A synthetic clipboard entry")!);copies.Add(CopyItem.FromPng(frame.RoundPng())!);}
   Title="TokenDock";WindowDecorations=WindowDecorations.None;CanResize=false;ShowInTaskbar=false;Topmost=true;Background=Brushes.Transparent;TransparencyLevelHint=[WindowTransparencyLevel.Transparent];
-  Width=440;Height=72;Content=canvas;panel.Child=content;canvas.Children.Add(panel);canvas.Children.Add(rail);rail.Child=icons;panel.IsVisible=false;
-  panel.PointerEntered+=(_,_)=>close.Stop();rail.PointerEntered+=(_,_)=>{close.Stop();if(!expanded&&!dragging&&!reordering)ShowModule("all");};PointerExited+=(_,_)=>{if(!dragging&&!reordering)close.Start();};close.Tick+=(_,_)=>{close.Stop();Collapse();};
+  Width=440;Height=72;Content=canvas;panel.Child=new ScrollViewer{Content=content,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,VerticalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Auto};canvas.Children.Add(panel);canvas.Children.Add(rail);rail.Child=new ScrollViewer{Content=icons,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden,VerticalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden};panel.IsVisible=false;
+  panel.PointerEntered+=(_,_)=>close.Stop();rail.PointerEntered+=(_,_)=>{close.Stop();if(!expanded&&!dragging&&!reordering)ShowModule("all");};PointerExited+=(_,_)=>{if(!dragging&&!reordering&&!shelfDragging)close.Start();};close.Tick+=(_,_)=>{close.Stop();if(!shelfDragging)Collapse();};
   hover.Tick+=(_,_)=>{hover.Stop();ShowModule(pending);};motion.Tick+=(_,_)=>Animate();
   sample.Tick+=(_,_)=>Sample();live.Tick+=(_,_)=>{live.Stop();Interlocked.Exchange(ref refreshPending,0);meters=meter.Snapshot();SampleContent();};meter.Changed+=ScheduleRead;custom.Changed+=ScheduleRead;
   rail.PointerPressed+=BeginMove;rail.PointerMoved+=Move;rail.PointerReleased+=EndMove;
   KeyDown+=(_,e)=>{if(e.Key==Key.Escape){Collapse();e.Handled=true;}};
-  DragDrop.SetAllowDrop(this,true);AddHandler(DragDrop.DragOverEvent,DragOver);AddHandler(DragDrop.DropEvent,Drop);
+  DragDrop.SetAllowDrop(this,true);AddHandler(DragDrop.DragOverEvent,DragOver);AddHandler(DragDrop.DropEvent,Drop);AddHandler(DragDrop.DragLeaveEvent,(_,_)=>{if(!shelfDragging)close.Start();});
+  Screens.Changed+=DisplaysChanged;ScalingChanged+=DisplaysChanged;
   copies.Changed+=()=>{if(selected=="clipboard"&&expanded)BuildCopies();};copies.Error+=ShowError;
   music.Changed+=UpdateMusic;camera.Changed+=UpdateCamera;
   PropertyChanged+=(_,e)=>{if(e.Property==IsVisibleProperty&&!IsVisible){Collapse();camera.SetActive(false);}};
@@ -56,7 +57,7 @@ sealed class DockWindow:Window,IDisposable {
   tray=new TrayIcon{Icon=new WindowIcon(Path.Combine(AppContext.BaseDirectory,"assets","tokendock.ico")),ToolTipText="TokenDock",Menu=menu,IsVisible=true};tray.Clicked+=(_,_)=>{Show();Activate();};TrayIcon.SetIcons(Application.Current!,new TrayIcons{tray});
  }
  void Quit(){Dispose();if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)desktop.Shutdown();}
- internal void SetEdge(Edge value){edge=value;prefs.DockEdge=value.ToString();if(value!=Edge.Floating)prefs.DockVertical=value is Edge.Left or Edge.Right;floating=Position;SavePrefs();BuildRail();ArrangeDock(true);}
+ internal void SetEdge(Edge value){edge=value;prefs.DockEdge=value.ToString();if(value!=Edge.Floating)prefs.DockVertical=value is Edge.Left or Edge.Right;floating=Position;RememberPlacement();BuildRail();ArrangeDock(true);}
  void BuildRail(){
   icons.Children.Clear();buttons.Clear();counts.Clear();icons.Orientation=Vertical?Orientation.Vertical:Orientation.Horizontal;icons.Margin=new Thickness(12);icons.Spacing=12;icons.HorizontalAlignment=HorizontalAlignment.Center;icons.VerticalAlignment=VerticalAlignment.Center;featured=null;if(prefs.CounterAbove){featured=Ui.Text("0",13,Ui.Mint);featured.Width=64;featured.VerticalAlignment=VerticalAlignment.Center;icons.Children.Add(featured);}
   foreach(var id in prefs.Layout){
@@ -80,9 +81,12 @@ sealed class DockWindow:Window,IDisposable {
   }
  }
  string Label(string id)=>id switch{"music"=>"Music","clipboard"=>"Clipboard","camera"=>"Camera","cat"=>"RAM",_=>prefs.Name(id)};
- void BeginMove(object? sender,PointerPressedEventArgs e){if(!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;press=e.GetPosition(this);origin=Position;dragging=true;prefs.DockVertical=Vertical;edge=Edge.Floating;floating=Position;e.Pointer.Capture(rail);ArrangeDock(true);}
- void Move(object? sender,PointerEventArgs e){if(!dragging)return;var delta=e.GetPosition(this)-press;floating=new PixelPoint(origin.X+(int)(delta.X*RenderScaling),origin.Y+(int)(delta.Y*RenderScaling));Position=floating;origin=Position;}
- void EndMove(object? sender,PointerReleasedEventArgs e){if(!dragging)return;dragging=false;e.Pointer.Capture(null);floating=Position;var screen=Screens.ScreenFromWindow(this)?.WorkingArea;if(screen is {} a){int sizeW=(int)(Width*RenderScaling),sizeH=(int)(Height*RenderScaling);if(Math.Abs(Position.X-a.X)<20)edge=Edge.Left;else if(Math.Abs(Position.X+sizeW-a.Right)<20)edge=Edge.Right;else if(Math.Abs(Position.Y-a.Y)<20)edge=Edge.Top;else if(Math.Abs(Position.Y+sizeH-a.Bottom)<20)edge=Edge.Bottom;}prefs.DockEdge=edge.ToString();prefs.DockX=floating.X;prefs.DockY=floating.Y;SavePrefs();BuildRail();ArrangeDock(true);}
+ PixelRect WorkArea=>DockPlacement.SelectArea(Screens.All.Select(s=>s.WorkingArea),anchor);
+ void DisplaysChanged(object? sender,EventArgs e){if(disposed||dragging)return;var area=WorkArea;anchor=DockPlacement.Center(area);floating=DockPlacement.Locate(Edge.Floating,area,new PixelSize((int)(Width*RenderScaling),(int)(Height*RenderScaling)),floating);ArrangeDock(true);RememberPlacement();}
+ void RememberPlacement(){prefs.DockEdge=edge.ToString();var point=edge==Edge.Floating?floating:anchor;prefs.DockX=point.X;prefs.DockY=point.Y;SavePrefs();}
+ void BeginMove(object? sender,PointerPressedEventArgs e){if(!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;var pointer=this.PointToScreen(e.GetPosition(this));dragOffset=new PixelPoint(pointer.X-Position.X,pointer.Y-Position.Y);dragging=true;prefs.DockVertical=Vertical;edge=Edge.Floating;floating=Position;anchor=pointer;e.Pointer.Capture(rail);ArrangeDock(true);}
+ void Move(object? sender,PointerEventArgs e){if(!dragging)return;anchor=this.PointToScreen(e.GetPosition(this));floating=new PixelPoint(anchor.X-dragOffset.X,anchor.Y-dragOffset.Y);Position=floating;}
+ void EndMove(object? sender,PointerReleasedEventArgs e){if(!dragging)return;dragging=false;e.Pointer.Capture(null);floating=Position;var area=WorkArea;edge=DockPlacement.Snap(Position,new PixelSize((int)(Width*RenderScaling),(int)(Height*RenderScaling)),area,RenderScaling);anchor=DockPlacement.Center(area);RememberPlacement();BuildRail();ArrangeDock(true);}
  internal void ShowModule(string id){
   if(disposed)return;close.Stop();hover.Stop();if(selected==id&&expanded)return;
   camera.SetActive(false);selected=id;expanded=true;panel.IsVisible=true;ClearTransient();
@@ -104,12 +108,12 @@ sealed class DockWindow:Window,IDisposable {
  }
  void Animate(){
   double now=clock.Elapsed.TotalSeconds,dt=now-last;last=now;bool moving=width.Step(dt,reduced)|height.Step(dt,reduced)|bodyHeight.Step(dt,reduced);
-  Width=Math.Max(72,width.Value);Height=Math.Max(72,height.Value);
-  if(Vertical){rail.Width=72;rail.Height=RailLength;Canvas.SetLeft(rail,edge==Edge.Right?Width-72:0);Canvas.SetTop(rail,(Height-rail.Height)/2);panel.Width=352;panel.Height=bodyHeight.Value;Canvas.SetLeft(panel,edge==Edge.Right?0:72);Canvas.SetTop(panel,(Height-panel.Height)/2);}
-  else{rail.Width=RailLength;rail.Height=72;Canvas.SetLeft(rail,(Width-rail.Width)/2);Canvas.SetTop(rail,edge==Edge.Bottom?Height-72:0);panel.Width=Width;panel.Height=Math.Max(0,Height-72);Canvas.SetLeft(panel,0);Canvas.SetTop(panel,edge==Edge.Bottom?0:72);}
+  var area=WorkArea;Width=Math.Min(area.Width/RenderScaling,Math.Max(72,width.Value));Height=Math.Min(area.Height/RenderScaling,Math.Max(72,height.Value));
+  if(Vertical){rail.Width=72;rail.Height=Math.Min(RailLength,Height);Canvas.SetLeft(rail,edge==Edge.Right?Width-72:0);Canvas.SetTop(rail,(Height-rail.Height)/2);panel.Width=Math.Max(0,Width-72);panel.Height=Math.Min(Height,bodyHeight.Value);Canvas.SetLeft(panel,edge==Edge.Right?0:72);Canvas.SetTop(panel,(Height-panel.Height)/2);}
+  else{rail.Width=Math.Min(RailLength,Width);rail.Height=72;Canvas.SetLeft(rail,(Width-rail.Width)/2);Canvas.SetTop(rail,edge==Edge.Bottom?Height-72:0);panel.Width=Width;panel.Height=Math.Max(0,Height-72);Canvas.SetLeft(panel,0);Canvas.SetTop(panel,edge==Edge.Bottom?0:72);}
   rail.CornerRadius=edge switch{Edge.Top=>new(0,0,28,28),Edge.Bottom=>new(28,28,0,0),Edge.Left=>new(0,28,28,0),Edge.Right=>new(28,0,0,28),_=>new(28)};
   panel.CornerRadius=new CornerRadius(28);panel.IsVisible=expanded||moving;
-  if(!dragging){var area=Screens.ScreenFromWindow(this)?.WorkingArea??new PixelRect(0,0,1920,1080);Position=DockPlacement.Locate(edge,area,new PixelSize((int)(Width*RenderScaling),(int)(Height*RenderScaling)),floating);}
+  if(!dragging){Position=DockPlacement.Locate(edge,area,new PixelSize((int)(Width*RenderScaling),(int)(Height*RenderScaling)),floating);}
   if(!moving){motion.Stop();panel.IsVisible=expanded;}
  }
  Control BuildTokens(string id){counter=Ui.Text("0",42);details=Ui.Text("",13,Ui.Muted);if(!graphs.TryGetValue(id,out var graph))graphs[id]=graph=new TokenGraph();if(graph.Parent is StackPanel parent)parent.Children.Remove(graph);return Ui.Stack(Ui.Text(prefs.Name(id),14,Ui.Muted),counter,graph,details);}
@@ -145,7 +149,7 @@ sealed class DockWindow:Window,IDisposable {
    var copy=Ui.Button("Copy",()=>{},"Copy "+item.Preview);copy.Click+=async(_,_)=>{try{await copies.Copy(item);copy.Content="✓";}catch(Exception e)when(e is IOException or InvalidOperationException){ShowError("Could not copy this item.");}};Grid.SetColumn(copy,1);row.Children.Add(copy);
    var remove=Ui.Button("×",()=>{copies.History.Remove(item.Key);BuildCopies();},"Remove item");remove.Opacity=0;Grid.SetColumn(remove,2);row.Children.Add(remove);row.PointerEntered+=(_,_)=>remove.Opacity=1;row.PointerExited+=(_,_)=>remove.Opacity=remove.IsKeyboardFocusWithin?1:0;remove.GotFocus+=(_,_)=>remove.Opacity=1;
    Point start=default;PointerPressedEventArgs? pressed=null;preview.PointerPressed+=(_,e)=>{if(e.GetCurrentPoint(preview).Properties.IsLeftButtonPressed){start=e.GetPosition(preview);pressed=e;}};
-   preview.PointerMoved+=async(_,e)=>{if(pressed==null||((Vector)(e.GetPosition(preview)-start)).Length<6)return;var trigger=pressed;pressed=null;close.Stop();try{using var data=await item.Transfer(this);await DragDrop.DoDragDropAsync(trigger,data,DragDropEffects.Copy);}catch(Exception error)when(error is IOException or InvalidOperationException){ShowError("Could not drag this item.");}};preview.PointerReleased+=(_,_)=>pressed=null;
+   preview.PointerMoved+=async(_,e)=>{if(pressed==null||((Vector)(e.GetPosition(preview)-start)).Length<6)return;var trigger=pressed;pressed=null;close.Stop();hover.Stop();shelfDragging=true;try{using var data=await item.Transfer(this);await DragDrop.DoDragDropAsync(trigger,data,DragDropEffects.Copy);}catch(Exception error)when(error is IOException or InvalidOperationException){ShowError("Could not drag this item.");}finally{shelfDragging=false;if(!IsPointerOver)close.Start();}};preview.PointerReleased+=(_,_)=>pressed=null;
    rows.Children.Add(new Border{Child=row,Background=Ui.Card,CornerRadius=new CornerRadius(12),Padding=new Thickness(10)});
   }
   if(copies.History.Items.Count==0)rows.Children.Add(Ui.Text(prefs.ClipboardHistory?"Drop files here, or copy text and images.":"Drop files here. Enable clipboard history in Customize to collect copies.",14,Ui.Muted));
@@ -169,7 +173,7 @@ sealed class DockWindow:Window,IDisposable {
  void SavePrefs(){if(fixture)return;try{prefs.Save();}catch(Exception e)when(e is IOException or UnauthorizedAccessException){ShowError("Could not save preferences.");}}
  void ShowError(string message){if(content.Content is StackPanel stack){if(errorLabel?.Parent==stack)errorLabel.Text=message;else{errorLabel=Ui.Text(message,13,Ui.Muted);stack.Children.Add(errorLabel);}ResizeBody();}}
  void ClearTransient(){foreach(var bitmap in transient)bitmap.Dispose();transient.Clear();frameBitmap?.Dispose();frameBitmap=null;artBitmap?.Dispose();artBitmap=null;}
- public void Dispose(){if(disposed)return;disposed=true;live.Stop();sample.Stop();motion.Stop();hover.Stop();close.Stop();camera.Dispose();copies.Dispose();music.Dispose();meter.Dispose();custom.Dispose();tray?.Dispose();barArt?.Dispose();ClearTransient();}
+ public void Dispose(){if(disposed)return;disposed=true;Screens.Changed-=DisplaysChanged;ScalingChanged-=DisplaysChanged;live.Stop();sample.Stop();motion.Stop();hover.Stop();close.Stop();camera.Dispose();copies.Dispose();music.Dispose();meter.Dispose();custom.Dispose();tray?.Dispose();barArt?.Dispose();ClearTransient();}
  internal void Settle(){content.UpdateLayout();ResizeBody();width.Value=width.Target;height.Value=height.Target;bodyHeight.Value=bodyHeight.Target;width.Velocity=height.Velocity=bodyHeight.Velocity=0;Animate();content.UpdateLayout();}
  internal string Selected=>selected;internal bool Expanded=>expanded;
 }
