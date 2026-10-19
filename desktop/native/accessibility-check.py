@@ -16,12 +16,14 @@ else:
     status.Set('org.a11y.Status', 'IsEnabled', dbus.Boolean(True))
     import pyatspi
 
+last_snapshot = []
 def until(check, description):
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         value = check()
         if value: return value
         time.sleep(.15)
+    print("Last synthetic accessibility snapshot:", json.dumps(last_snapshot[:100]))
     raise AssertionError(description)
 
 with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
@@ -33,10 +35,12 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
     app = subprocess.Popen(command + ['--accessibility-fixture', str(directory)])
     try:
         def tree(press=False):
+            global last_snapshot
             if mac:
                 result = subprocess.run([str(probe), str(app.pid), 'press-camera' if press else 'snapshot'], capture_output=True, text=True, timeout=15)
                 if result.returncode: return []
-                return json.loads(result.stdout)
+                last_snapshot = json.loads(result.stdout)
+                return last_snapshot
             desktop = pyatspi.Registry.getDesktop(0)
             target = next((a for a in desktop if a.get_process_id() == app.pid), None)
             if target is None: return []
@@ -53,6 +57,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
                 for child in node:
                     if child: visit(child, depth+1)
             visit(target)
+            last_snapshot = nodes
             return nodes
         until(lambda: (directory/'ready').exists(), 'Fixture did not open')
         until(lambda: any(n['name']=='Camera' and n['actions'] for n in tree()), 'Camera action absent from native accessibility tree')
