@@ -8,9 +8,9 @@ namespace TokenDock;
 
 static class Program {
  [STAThread]public static int Main(string[] args){
-  if(args.Contains("--check")){
+  if(args.Contains("--check")||args.Contains("--media-check")){
    AppBuilder.Configure<DockApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions{UseHeadlessDrawing=false}).SetupWithoutStarting();
-   return DesktopChecks.Run(args);
+   return args.Contains("--media-check")?MediaChecks.Run():DesktopChecks.Run(args);
   }
   return AppBuilder.Configure<DockApp>().UsePlatformDetect().StartWithClassicDesktopLifetime(args,ShutdownMode.OnExplicitShutdown);
  }

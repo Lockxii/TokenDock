@@ -14,7 +14,7 @@ sealed class Music:IDisposable {
  readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromSeconds(2)};readonly CancellationTokenSource stop=new();
  readonly string artworkPath=Path.Combine(Path.GetTempPath(),"tokendock-art-"+Guid.NewGuid().ToString("N")+".jpg");
  readonly HttpClient http=new(){Timeout=TimeSpan.FromSeconds(5)};
- bool enabled,busy,disposed;int generation;string? artKey;DateTime sampled;
+ bool enabled,busy,disposed;int generation;string? artKey;string macPlayer="";DateTime sampled;
  public Track Track{get;private set;}=Track.Empty;public byte[]? Artwork{get;private set;}public string Status{get;private set;}="";
  public event Action? Changed;
  public double Position=>Math.Min(Track.Length,Track.Position+(Track.Playing?(DateTime.UtcNow-sampled).TotalSeconds:0));
@@ -48,7 +48,22 @@ sealed class Music:IDisposable {
    await using(stream){using var bytes=new MemoryStream();byte[] buffer=new byte[16384];int n;while((n=await stream.ReadAsync(buffer,stop.Token))>0){if(bytes.Length+n>4*1024*1024)return null;bytes.Write(buffer,0,n);}return ImageBytes.Valid(bytes.ToArray())?bytes.ToArray():null;}
   }catch(Exception e)when(e is IOException or UnauthorizedAccessException or HttpRequestException or OperationCanceledException){return null;}
  }
- Task<string> Mac(string command,string? value=null)=>ProcessRunner.Run("/usr/bin/osascript",new[]{Path.Combine(AppContext.BaseDirectory,"native","music.applescript"),command,value??"",artworkPath},stop.Token);
+ async Task<string> Mac(string command,string? value=null){
+  if(command=="status"){
+   // Inspect running bundles without launching missing apps or compiling their dictionaries.
+   const string script="ObjC.import('AppKit'); $.NSWorkspace.sharedWorkspace.runningApplications.js.map(x => x.bundleIdentifier.js).filter(x => x === 'com.spotify.client' || x === 'com.apple.Music').join('\\n')";
+   var running=await ProcessRunner.Run("/usr/bin/osascript",["-l","JavaScript","-e",script],stop.Token);
+   Track? fallback=null;string? result=null;
+   foreach(var player in new[]{"spotify","apple"}){
+    if(!running.Contains(player=="spotify"?"com.spotify.client":"com.apple.Music",StringComparison.Ordinal))continue;
+    try{var raw=await ReadMacPlayer(player,command,value);var track=Track.Parse(raw);if(track.Playing){macPlayer=player;return raw;}if(fallback==null){fallback=track;result=raw;macPlayer=player;}}catch(IOException){}
+   }
+   return result??throw new IOException("No supported player is running.");
+  }
+  if(macPlayer.Length==0)throw new IOException("No selected player.");
+  return await ReadMacPlayer(macPlayer,command,value);
+ }
+ Task<string> ReadMacPlayer(string player,string command,string? value)=>ProcessRunner.Run("/usr/bin/osascript",[Path.Combine(AppContext.BaseDirectory,"native",$"music-{player}.applescript"),command,value??"",artworkPath],stop.Token);
  public async Task Command(string command,double value=0){
   if(!enabled||command is not("play-pause" or "previous" or "next" or "position"))return;
   try{

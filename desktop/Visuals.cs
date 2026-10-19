@@ -15,20 +15,27 @@ static class Ui {
   return Text("◇",size);
  }
  public static StackPanel Stack(params Control[] controls){var stack=new StackPanel{Spacing=12};foreach(var control in controls)stack.Children.Add(control);return stack;}
+ public static Control Transport(string name)=>new Avalonia.Controls.Shapes.Path{Data=Geometry.Parse(name switch{"previous"=>"M2,3 H5 V17 H2 Z M17,3 L6,10 17,17 Z","next"=>"M15,3 H18 V17 H15 Z M3,3 L14,10 3,17 Z","pause"=>"M3,2 H7 V18 H3 Z M12,2 H16 V18 H12 Z",_=>"M5,2 L18,10 5,18 Z"}),Fill=Brushes.White,Width=18,Height=18,Stretch=Stretch.Uniform};
 }
 static class Assets {
  static readonly Dictionary<string,Bitmap> cache=[];
  public static Bitmap Get(string name){if(!cache.TryGetValue(name,out var image))cache[name]=image=new Bitmap(Path.Combine(AppContext.BaseDirectory,"assets",name));return image;}
+ public static Bitmap CatFrame(int frame,int heat){
+  string key=$"cat-{frame}-{heat}";if(cache.TryGetValue(key,out var cached))return cached;
+  using var source=SkiaSharp.SKBitmap.Decode(Path.Combine(AppContext.BaseDirectory,"assets","cat-run.png"));
+  int a=(int)Math.Round(frame*source.Width/8d),b=(int)Math.Round((frame+1)*source.Width/8d);using var crop=new SkiaSharp.SKBitmap(b-a,200);
+  using(var canvas=new SkiaSharp.SKCanvas(crop))canvas.DrawBitmap(source,new SkiaSharp.SKRect(a,270,b,470),new SkiaSharp.SKRect(0,0,crop.Width,200));
+  if(heat>0){var pixels=crop.Pixels;for(int i=0;i<pixels.Length;i++){var p=pixels[i];pixels[i]=new SkiaSharp.SKColor(p.Red,(byte)(p.Green*(heat==2?.45:.75)),(byte)(p.Blue*.4),p.Alpha);}crop.Pixels=pixels;}
+  using var image=SkiaSharp.SKImage.FromBitmap(crop);using var png=image.Encode(SkiaSharp.SKEncodedImageFormat.Png,100);return cache[key]=new Bitmap(png.AsStream());
+ }
 }
 sealed class Cat:Control {
  readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(66)};double phase;MemoryInfo memory;Preferences prefs;
- public Cat(Preferences prefs){this.prefs=prefs;Width=40;Height=40;timer.Tick+=(_,_)=>{phase+=memory.CyclesPerSecond*prefs.CatSpeed*.066;InvalidateVisual();};AttachedToVisualTree+=(_,_)=>timer.Start();DetachedFromVisualTree+=(_,_)=>timer.Stop();Avalonia.Automation.AutomationProperties.SetName(this,"Available RAM");}
+ public Cat(Preferences prefs){this.prefs=prefs;Width=40;Height=40;timer.Tick+=(_,_)=>{if(!prefs.ReduceMotion){phase+=memory.CyclesPerSecond*prefs.CatSpeed*.066;InvalidateVisual();}};AttachedToVisualTree+=(_,_)=>{if(!prefs.ReduceMotion)timer.Start();};DetachedFromVisualTree+=(_,_)=>timer.Stop();Avalonia.Automation.AutomationProperties.SetName(this,"Available RAM");}
  public void Update(MemoryInfo value){memory=value;InvalidateVisual();}
  public override void Render(DrawingContext context){
-  var image=Assets.Get("cat-run.png");int frame=(int)(phase*8)%8;double sw=image.Size.Width/8;
-  context.DrawImage(image,new Rect(frame*sw,270,sw,200),new Rect(0,0,40,40));
-  double percent=memory.FreeRatio*100;var color=percent<prefs.CatRed?Colors.IndianRed:percent<prefs.CatOrange?Colors.Orange:Colors.Transparent;
-  context.DrawEllipse(new SolidColorBrush(color),null,new Point(35,5),3,3);
+  double percent=memory.FreeRatio*100;int heat=percent<prefs.CatRed?2:percent<prefs.CatOrange?1:0;
+  var image=Assets.CatFrame((int)(phase*8)%8,heat);context.DrawImage(image,new Rect(0,0,image.Size.Width,image.Size.Height),new Rect(0,5,40,30));
  }
 }
 sealed class TokenGraph:Control {

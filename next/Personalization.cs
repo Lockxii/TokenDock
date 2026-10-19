@@ -11,6 +11,11 @@ sealed class Preferences {
  public double CatRed {get;set;}=20;
  public double CatSpeed {get;set;}=1;
  public bool CatVisible {get;set;}=true;
+ public bool ReduceMotion {get;set;}
+ public string DockEdge {get;set;}="Top";
+ public bool DockVertical {get;set;}
+ public int DockX {get;set;}
+ public int DockY {get;set;}
  public string[] Layout=> (LayoutOrder??Visible.Concat(ModuleOrder).Append("cat").ToArray()).Concat(Ids).Concat(new[]{"music","clipboard","camera","cat"}).Distinct().Where(IsShown).ToArray();
  public string[] ModuleOrder {get;set;}=["music","clipboard"];
  public bool MusicPreview {get;set;}=true;
@@ -32,6 +37,7 @@ sealed class Preferences {
 
  }
  public void Normalize(){
+  if(DockEdge is not("Top" or "Bottom" or "Left" or "Right" or "Floating"))DockEdge="Top";
   CatOrange=double.IsFinite(CatOrange)?Math.Clamp(CatOrange,2,100):40;CatRed=double.IsFinite(CatRed)?Math.Clamp(CatRed,1,CatOrange-1):Math.Min(20,CatOrange-1);CatSpeed=double.IsFinite(CatSpeed)?Math.Clamp(CatSpeed,.25,2):1;
   if(Camera&&LayoutOrder==null)LayoutOrder=Layout;
   ModuleOrder=(ModuleOrder??[]).Where(id=>id is "music" or "clipboard").Concat(new[]{"music","clipboard"}).Distinct().ToArray();

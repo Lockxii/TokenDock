@@ -15,6 +15,6 @@
     <Compile Include="../next/Personalization.cs" Link="Personalization.cs" />
     <Compile Include="../next/FileShelf.cs" Link="FileShelf.cs" />
     <Content Include="../assets/*.png;../assets/*.ico" Link="assets/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="native/music.applescript" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="native/music-*.applescript" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
