@@ -39,3 +39,23 @@ Wayland may restrict positioning. Resolve or explicitly agree limitations before
 7. Clean install, upgrade, uninstall and permission testing.
 
 Hosted CI cannot prove webcam, compositor, graphical-session or notarization behavior. No platform badges/downloads until this gate is met. Windows remains the only released platform.
+
+## Additional CI evidence (development branch)
+
+The desktop now pins layout to a selected monitor rather than reselecting it while
+an expanded panel resizes. Display-change recovery, physical-coordinate dragging,
+DPI-aware snapping and compact-screen overflow are covered by synthetic geometry
+and actual headless window-layout checks. Physical display hot-plug, mixed-DPI
+compositors, Spaces and Wayland remain open.
+
+Linux X11 drag/drop is exercised across two independent processes under Xvfb,
+including file/photo import, shelf export, Unicode file URLs and original preservation.
+The macOS drag harness requires existing CI event permission; warnings/skips must
+not be counted as native drag validation. Finder, file managers and arbitrary
+third-party destination applications remain distinct compatibility checks.
+
+Development packaging now includes Debian packages, portable Linux archives, macOS
+DMGs and PKGs. CI installs/reinstalls/removes its own packages and runs the synthetic
+app checks from installed and mounted artifacts. This verifies packaging mechanics,
+not Gatekeeper trust: Developer ID signing, notarization and real clean-user startup
+remain release gates. There is still no release/upload step for these binaries.

@@ -30,6 +30,7 @@ sealed class NativeDragWindow:Window {
     if(!File.ReadAllBytes(paths[0]).SequenceEqual(File.ReadAllBytes(original)))throw new IOException("Native drop changed file bytes.");
     if(role=="sink"){
      await copies.Store(paths);last=copies.History.Items.FirstOrDefault()??throw new IOException("Shelf did not retain the drop.");
+     File.AppendAllText(Path.Combine(directory,"shelf.paths"),last.Files[0]+"\n");
      if(last.Files[0]==original)throw new IOException("Shelf must retain an independent copy.");
     }else if(paths[0]==original)throw new IOException("Return drag must use the shelf snapshot.");
     File.AppendAllText(Path.Combine(directory,role+".events"),Path.GetFileName(original)+"\n");e.Handled=true;

@@ -81,14 +81,18 @@ sealed class DockWindow:Window,IDisposable {
   }
  }
  string Label(string id)=>id switch{"music"=>"Music","clipboard"=>"Clipboard","camera"=>"Camera","cat"=>"RAM",_=>prefs.Name(id)};
- PixelRect WorkArea=>DockPlacement.SelectArea(Screens.All.Select(s=>s.WorkingArea),anchor);
- void DisplaysChanged(object? sender,EventArgs e){if(disposed||dragging)return;var area=WorkArea;anchor=DockPlacement.Center(area);floating=DockPlacement.Locate(Edge.Floating,area,new PixelSize((int)(Width*RenderScaling),(int)(Height*RenderScaling)),floating);ArrangeDock(true);RememberPlacement();}
+ PixelRect[]? fixtureAreas;double fixtureScale=1;
+ double Scale=>fixture?fixtureScale:RenderScaling;
+ PixelRect WorkArea=>DockPlacement.SelectArea((IEnumerable<PixelRect>?)fixtureAreas??Screens.All.Select(s=>s.WorkingArea),anchor);
+ internal void FixtureDisplays(PixelRect[] areas,PixelPoint point,double scale){if(!fixture)throw new InvalidOperationException("Synthetic displays require fixture mode.");fixtureAreas=areas;fixtureScale=scale;anchor=point;DisplaysChanged(this,EventArgs.Empty);}
+
+ void DisplaysChanged(object? sender,EventArgs e){if(disposed||dragging)return;var area=WorkArea;anchor=DockPlacement.Center(area);floating=DockPlacement.Locate(Edge.Floating,area,new PixelSize((int)(Width*Scale),(int)(Height*Scale)),floating);ArrangeDock(true);RememberPlacement();}
  void RememberPlacement(){prefs.DockEdge=edge.ToString();var point=edge==Edge.Floating?floating:anchor;prefs.DockX=point.X;prefs.DockY=point.Y;SavePrefs();}
  void BeginMove(object? sender,PointerPressedEventArgs e){if(!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;var pointer=this.PointToScreen(e.GetPosition(this));dragOffset=new PixelPoint(pointer.X-Position.X,pointer.Y-Position.Y);dragging=true;prefs.DockVertical=Vertical;edge=Edge.Floating;floating=Position;anchor=pointer;e.Pointer.Capture(rail);ArrangeDock(true);}
  void Move(object? sender,PointerEventArgs e){if(!dragging)return;anchor=this.PointToScreen(e.GetPosition(this));floating=new PixelPoint(anchor.X-dragOffset.X,anchor.Y-dragOffset.Y);Position=floating;}
- void EndMove(object? sender,PointerReleasedEventArgs e){if(!dragging)return;dragging=false;e.Pointer.Capture(null);floating=Position;var area=WorkArea;edge=DockPlacement.Snap(Position,new PixelSize((int)(Width*RenderScaling),(int)(Height*RenderScaling)),area,RenderScaling);anchor=DockPlacement.Center(area);RememberPlacement();BuildRail();ArrangeDock(true);}
+ void EndMove(object? sender,PointerReleasedEventArgs e){if(!dragging)return;dragging=false;e.Pointer.Capture(null);floating=Position;var area=WorkArea;edge=DockPlacement.Snap(Position,new PixelSize((int)(Width*Scale),(int)(Height*Scale)),area,Scale);anchor=DockPlacement.Center(area);RememberPlacement();BuildRail();ArrangeDock(true);}
  internal void ShowModule(string id){
-  if(disposed)return;close.Stop();hover.Stop();if(selected==id&&expanded)return;
+  if(disposed||(shelfDragging&&id!="clipboard"))return;close.Stop();hover.Stop();if(selected==id&&expanded)return;
   camera.SetActive(false);selected=id;expanded=true;panel.IsVisible=true;ClearTransient();
   counter=null;details=null;ramNumber=null;ramBar=null;ramPercent=null;musicImage=null;musicTitle=null;musicArtist=null;musicTime=null;seek=null;play=null;cameraImage=null;cameraStatus=null;
   Control body=id switch{"music"=>BuildMusic(),"clipboard"=>copyCards,"camera"=>BuildCamera(),"cat"=>BuildRam(),"settings"=>new SettingsPane(prefs,ApplySettings,()=>ShowModule("all")),_=>BuildTokens(id)};
@@ -108,12 +112,12 @@ sealed class DockWindow:Window,IDisposable {
  }
  void Animate(){
   double now=clock.Elapsed.TotalSeconds,dt=now-last;last=now;bool moving=width.Step(dt,reduced)|height.Step(dt,reduced)|bodyHeight.Step(dt,reduced);
-  var area=WorkArea;Width=Math.Min(area.Width/RenderScaling,Math.Max(72,width.Value));Height=Math.Min(area.Height/RenderScaling,Math.Max(72,height.Value));
+  var area=WorkArea;Width=Math.Min(area.Width/Scale,Math.Max(72,width.Value));Height=Math.Min(area.Height/Scale,Math.Max(72,height.Value));
   if(Vertical){rail.Width=72;rail.Height=Math.Min(RailLength,Height);Canvas.SetLeft(rail,edge==Edge.Right?Width-72:0);Canvas.SetTop(rail,(Height-rail.Height)/2);panel.Width=Math.Max(0,Width-72);panel.Height=Math.Min(Height,bodyHeight.Value);Canvas.SetLeft(panel,edge==Edge.Right?0:72);Canvas.SetTop(panel,(Height-panel.Height)/2);}
   else{rail.Width=Math.Min(RailLength,Width);rail.Height=72;Canvas.SetLeft(rail,(Width-rail.Width)/2);Canvas.SetTop(rail,edge==Edge.Bottom?Height-72:0);panel.Width=Width;panel.Height=Math.Max(0,Height-72);Canvas.SetLeft(panel,0);Canvas.SetTop(panel,edge==Edge.Bottom?0:72);}
   rail.CornerRadius=edge switch{Edge.Top=>new(0,0,28,28),Edge.Bottom=>new(28,28,0,0),Edge.Left=>new(0,28,28,0),Edge.Right=>new(28,0,0,28),_=>new(28)};
   panel.CornerRadius=new CornerRadius(28);panel.IsVisible=expanded||moving;
-  if(!dragging){Position=DockPlacement.Locate(edge,area,new PixelSize((int)(Width*RenderScaling),(int)(Height*RenderScaling)),floating);}
+  if(!dragging){Position=DockPlacement.Locate(edge,area,new PixelSize((int)(Width*Scale),(int)(Height*Scale)),floating);}
   if(!moving){motion.Stop();panel.IsVisible=expanded;}
  }
  Control BuildTokens(string id){counter=Ui.Text("0",42);details=Ui.Text("",13,Ui.Muted);if(!graphs.TryGetValue(id,out var graph))graphs[id]=graph=new TokenGraph();if(graph.Parent is StackPanel parent)parent.Children.Remove(graph);return Ui.Stack(Ui.Text(prefs.Name(id),14,Ui.Muted),counter,graph,details);}
@@ -156,7 +160,7 @@ sealed class DockWindow:Window,IDisposable {
   copyCards.Children.Add(new ScrollViewer{Content=rows,MaxHeight=360});if(selected=="clipboard")ResizeBody();
  }
  void DragOver(object? sender,DragEventArgs e){if(e.DataTransfer.Contains(DataFormat.File)){e.DragEffects=DragDropEffects.Copy;close.Stop();ShowModule("clipboard");e.Handled=true;}else e.DragEffects=DragDropEffects.None;}
- async void Drop(object? sender,DragEventArgs e){var paths=e.DataTransfer.TryGetFiles()?.Select(f=>f.TryGetLocalPath()).Where(p=>p!=null).Cast<string>().ToArray()??[];if(paths.Length==0)return;e.Handled=true;await copies.Store(paths);ShowModule("clipboard");}
+ async void Drop(object? sender,DragEventArgs e){var paths=e.DataTransfer.TryGetFiles()?.Select(f=>f.TryGetLocalPath()).Where(p=>p!=null).Cast<string>().ToArray()??[];if(paths.Length==0)return;e.Handled=true;close.Stop();hover.Stop();shelfDragging=true;try{await copies.Store(paths);}finally{shelfDragging=false;}if(!disposed)ShowModule("clipboard");}
  void ScheduleRead(){if(fixture||disposed||Interlocked.Exchange(ref refreshPending,1)!=0)return;Dispatcher.UIThread.Post(()=>{if(!disposed)live.Start();});}
  void Sample(){
   memory=fixture?new MemoryInfo(32UL*1024*1024*1024,11UL*1024*1024*1024):MemoryInfo.Read();meters=fixture?[new Meter("Codex"){Value=new(32000,2100,8000)},new Meter("Claude Code"){Value=new(18000,4000,2000)},new Meter("OpenCode")]:meter.Snapshot();cat?.Update(memory);if(featured!=null){var readings=meters.Concat(custom.Snapshot()).ToArray();var ids=Preferences.Builtin.Concat(prefs.Sources.Select(s=>s.Id)).ToArray();int i=Array.IndexOf(ids,prefs.Counter);long total=prefs.Counter=="all"?readings.Sum(m=>m.Value.Total):i>=0&&i<readings.Length?readings[i].Value.Total:0;featured.Text=total>=1000000?$"{total/1000000d:0.#}m":total>=1000?$"{total/1000d:0.#}k":total.ToString();}SampleContent();

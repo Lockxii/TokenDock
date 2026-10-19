@@ -7,6 +7,7 @@ permissions:
   contents: read
 jobs:
   desktop:
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -49,6 +50,19 @@ jobs:
         env:
           TOKENDOCK_TEST_DISPLAY: isolated
         run: dotnet artifacts/desktop/TokenDock.dll --native-clipboard-check
+      - name: Native macOS drag/drop when event permission is available
+        if: runner.os == 'macOS'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: |
+          python3 desktop/native/drag-check.py artifacts/desktop/TokenDock.dll || {
+            result=$?
+            if [ "$result" = 77 ]; then
+              echo '::warning::macOS native drag/drop remains unverified: this runner denies event injection.'
+            else
+              exit "$result"
+            fi
+          }
       - name: Compile Apple Music adapter without launching the player
         if: runner.os == 'macOS'
         run: osacompile -o artifacts/music.scpt desktop/native/music-apple.applescript

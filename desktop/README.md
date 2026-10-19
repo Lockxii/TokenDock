@@ -8,6 +8,8 @@ Windows edition. It is **not a supported release yet**. The Windows WPF app in
 ## Implemented
 
 - Borderless top/bottom/left/right/floating dock; tray restore; inline panels.
+- Stable monitor anchoring across panel resizing, DPI-aware snapping, display-change
+  recovery and scrollable content when the working area is too small.
 - Direct icon reordering, visual customization, persistent preferences and placement.
 - Retargetable spring resizing, short hover switching and reduced-motion setting.
 - Codex, Claude Code, OpenCode and custom JSON counters; featured counter and graph.
@@ -83,8 +85,18 @@ bash scripts/package-native.sh linux-x64
 ```
 
 The script refuses to overwrite an existing package directory. It produces a
-local development bundle, not a GitHub release. The macOS bundle is ad-hoc signed
-for development; Developer ID signing/notarization has not been completed.
+local development bundle, not a GitHub release. Linux produces a `.deb` and a
+portable `.tar.gz`; the Debian package installs `/usr/bin/tokendock`, its private
+runtime in `/usr/lib/tokendock`, and a desktop entry/icon. CI validates Ubuntu 24.04
+on x64 and ARM64; other distributions are not yet validated. macOS produces a
+read-only `.dmg` (drag to Applications) and a `.pkg` installing `/Applications/TokenDock.app`.
+The app is ad-hoc signed for development; the installer is unsigned, and Developer ID
+signing/notarization has not been completed. No normal app is auto-launched by an installer.
+
+`scripts/check-installers.sh <runtime>` is **disposable CI only**: it refuses an
+existing installation, exercises installation/reinstallation, runs synthetic checks
+from the installed app and portable container, then removes its own installation.
+It never removes user preferences or captures. Never run it on a personal machine.
 
 ## Verification and publication gate
 
@@ -100,6 +112,15 @@ CI builds the desktop and native helpers on Linux/macOS, on x64 and ARM64, and r
   a disposable macOS runner. These checks refuse to run outside marked CI sessions.
 - Apple Music script compilation; no player is launched for this check.
 - Self-contained package smoke checks, including the ad-hoc signed macOS bundle.
+- Actual native X11 drag/drop between independent processes, including Unicode/space
+  file URLs, round-photo files, independent shelf snapshots, reverse export and cleanup.
+- The same native drag harness on macOS **only when the runner already permits
+  event injection**. A denied permission produces an explicit unverified warning;
+  it never requests permission or silently substitutes a clipboard test.
+- Simulated monitor removal, negative coordinates, mixed DPI and compact working areas
+  across all inline panels; these do not prove physical hot-plug/compositor behavior.
+- `.deb`/`.pkg` install/reinstall/remove, execution from a mounted read-only DMG and
+  extracted portable archive. No installers or application binaries are uploaded.
 
 Camera self-tests send a fixed 2×2 packet and never enumerate or open devices.
 CI uploads fixture renders only, not installable binaries. Physical-camera tests,

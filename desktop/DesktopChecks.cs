@@ -52,6 +52,13 @@ static class DesktopChecks {
    using var image=dock.CaptureRenderedFrame();Check(image!=null,"Offscreen surface renders");
    image!.Save(Path.Combine(directory,$"{edge}-{module}.png"),new Avalonia.Media.Imaging.PngBitmapEncoderOptions());dock.Collapse();Check(!dock.Expanded,"Panel closes");
   }
+  var compact=new PixelRect(-800,40,800,600);
+  foreach(var scale in new[]{1d,1.5,2d})foreach(var edge in Enum.GetValues<Edge>())foreach(var module in new[]{"music","clipboard","camera","cat","settings"}){
+   dock.FixtureDisplays([compact],DockPlacement.Center(compact),scale);dock.SetEdge(edge);dock.ShowModule(module);dock.Settle();
+   Check(dock.Width*scale<=compact.Width+1&&dock.Height*scale<=compact.Height+1,"Actual panel fits compact mixed-DPI working area");
+   Check(dock.Position.X>=compact.X&&dock.Position.Y>=compact.Y&&dock.Position.X+dock.Width*scale<=compact.Right+1&&dock.Position.Y+dock.Height*scale<=compact.Bottom+1,"Actual dock is accessible after screen change");
+  }
+  dock.FixtureDisplays([new PixelRect(0,0,1920,1080)],new PixelPoint(-500,200),1);dock.Settle();Check(dock.Position.X>=0,"Window recovers when its monitor disappears");
   foreach(var id in Enumerable.Range(0,120).Select(i=>new[]{"camera","clipboard","music","cat"}[i%4])){dock.ShowModule(id);Dispatcher.UIThread.RunJobs();Check(dock.Selected==id,"Rapid retarget keeps latest module");}dock.Settle();
   string helper=Camera.HelperPath;
   if(File.Exists(helper)){
