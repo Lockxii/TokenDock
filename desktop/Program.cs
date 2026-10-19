@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
 using Avalonia.Themes.Fluent;
 using Avalonia.Styling;
+using Avalonia.Threading;
 namespace TokenDock;
 
 static class Program {
@@ -27,7 +28,7 @@ sealed class DockApp:Application {
  public override void Initialize(){Name="TokenDock";RequestedThemeVariant=ThemeVariant.Dark;Styles.Add(new FluentTheme());}
  public override void OnFrameworkInitializationCompleted(){
   if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime dragApp&&Program.NativeDragArgs is {} dragArgs){dragApp.MainWindow=new NativeDragWindow(dragArgs[1],dragArgs[2]);base.OnFrameworkInitializationCompleted();return;}
-  if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop){var dock=new DockWindow(Program.NativeClipboardCheck);desktop.MainWindow=dock;desktop.Exit+=(_,_)=>dock.Dispose();if(Program.NativeClipboardCheck)dock.Opened+=async(_,_)=>{try{await NativeClipboardChecks.Run(dock).WaitAsync(TimeSpan.FromSeconds(15));desktop.Shutdown(0);}catch(Exception e){Console.Error.WriteLine(e);desktop.Shutdown(1);}};}
+  if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop){var dock=new DockWindow(Program.NativeClipboardCheck);desktop.MainWindow=dock;desktop.Exit+=(_,_)=>dock.Dispose();if(Program.NativeClipboardCheck)dock.Opened+=(_,_)=>Dispatcher.UIThread.Post(async()=>{try{await NativeClipboardChecks.Run(dock).WaitAsync(TimeSpan.FromSeconds(15));desktop.Shutdown(0);}catch(Exception e){Console.Error.WriteLine(e);desktop.Shutdown(1);}},DispatcherPriority.Background);}
   base.OnFrameworkInitializationCompleted();
  }
 }

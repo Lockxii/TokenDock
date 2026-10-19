@@ -17,6 +17,7 @@ static class DesktopChecks {
     Check(point.X>=monitor.X&&point.Y>=monitor.Y&&point.X+size.Width<=monitor.Right&&point.Y+size.Height<=monitor.Bottom,"Mixed-DPI placement remains inside work area");
    }
   }
+  Check(DockPlacement.SelectArea(monitors,new PixelPoint(int.MinValue,400))==monitors[0],"Invalid saved coordinates recover without integer overflow");
   Check(DockPlacement.SelectArea(monitors.Skip(1),new PixelPoint(-1500,400))==monitors[1],"Removed monitor falls back to nearest surviving display");
   Check(DockPlacement.Snap(new PixelPoint(26,300),new PixelSize(100,100),monitors[1],2)==Edge.Left,"Snap distance scales with DPI");
   Check(DockPlacement.Snap(new PixelPoint(26,300),new PixelSize(100,100),monitors[1],1)==Edge.Floating,"Free placement outside snap distance");

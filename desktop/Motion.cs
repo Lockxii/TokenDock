@@ -15,7 +15,7 @@ static class DockPlacement {
  public static PixelRect SelectArea(IEnumerable<PixelRect> areas,PixelPoint anchor){
   var valid=areas.Where(a=>a.Width>0&&a.Height>0).ToArray();
   if(valid.Length==0)return new PixelRect(0,0,1920,1080);
-  double Distance(PixelRect a){double x=Math.Max(a.X-anchor.X,Math.Max(0,(double)anchor.X-a.Right+1)),y=Math.Max(a.Y-anchor.Y,Math.Max(0,(double)anchor.Y-a.Bottom+1));return x*x+y*y;}
+  double Distance(PixelRect a){double x=Math.Max((double)a.X-anchor.X,Math.Max(0,(double)anchor.X-a.Right+1)),y=Math.Max((double)a.Y-anchor.Y,Math.Max(0,(double)anchor.Y-a.Bottom+1));return x*x+y*y;}
   return valid.OrderBy(Distance).First();
  }
  public static PixelPoint Center(PixelRect a)=>new(a.X+a.Width/2,a.Y+a.Height/2);

@@ -81,14 +81,27 @@ sealed class DockWindow:Window,IDisposable {
   }
  }
  string Label(string id)=>id switch{"music"=>"Music","clipboard"=>"Clipboard","camera"=>"Camera","cat"=>"RAM",_=>prefs.Name(id)};
- PixelRect[]? fixtureAreas;double fixtureScale=1;
+ PixelRect[]? fixtureAreas;double fixtureScale=1;Avalonia.Platform.Screen? selectedScreen;PixelRect? previousArea;
  double Scale=>fixture?fixtureScale:RenderScaling;
- PixelRect WorkArea=>DockPlacement.SelectArea((IEnumerable<PixelRect>?)fixtureAreas??Screens.All.Select(s=>s.WorkingArea),anchor);
+ PixelRect WorkArea {
+  get {
+   if(fixtureAreas!=null)return DockPlacement.SelectArea(fixtureAreas,anchor);
+   var screens=Screens.All;
+   if(!dragging&&selectedScreen!=null){
+    var same=screens.FirstOrDefault(s=>s.Equals(selectedScreen));
+    if(same==null&&!string.IsNullOrEmpty(selectedScreen.DisplayName)){var named=screens.Where(s=>s.DisplayName==selectedScreen.DisplayName).ToArray();if(named.Length==1)same=named[0];}
+    if(same!=null){selectedScreen=same;return same.WorkingArea;}
+   }
+   var area=DockPlacement.SelectArea(screens.Select(s=>s.WorkingArea),anchor);
+   if(!dragging)selectedScreen=screens.FirstOrDefault(s=>s.WorkingArea==area);
+   return area;
+  }
+ }
  internal void FixtureDisplays(PixelRect[] areas,PixelPoint point,double scale){if(!fixture)throw new InvalidOperationException("Synthetic displays require fixture mode.");fixtureAreas=areas;fixtureScale=scale;anchor=point;DisplaysChanged(this,EventArgs.Empty);}
 
- void DisplaysChanged(object? sender,EventArgs e){if(disposed||dragging)return;var area=WorkArea;anchor=DockPlacement.Center(area);floating=DockPlacement.Locate(Edge.Floating,area,new PixelSize((int)(Width*Scale),(int)(Height*Scale)),floating);ArrangeDock(true);RememberPlacement();}
+ void DisplaysChanged(object? sender,EventArgs e){if(disposed||dragging)return;var area=WorkArea;if(edge==Edge.Floating&&previousArea is {} old)floating=new PixelPoint(area.X+floating.X-old.X,area.Y+floating.Y-old.Y);anchor=DockPlacement.Center(area);floating=DockPlacement.Locate(Edge.Floating,area,new PixelSize((int)(Width*Scale),(int)(Height*Scale)),floating);ArrangeDock(true);RememberPlacement();}
  void RememberPlacement(){prefs.DockEdge=edge.ToString();var point=edge==Edge.Floating?floating:anchor;prefs.DockX=point.X;prefs.DockY=point.Y;SavePrefs();}
- void BeginMove(object? sender,PointerPressedEventArgs e){if(!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;var pointer=this.PointToScreen(e.GetPosition(this));dragOffset=new PixelPoint(pointer.X-Position.X,pointer.Y-Position.Y);dragging=true;prefs.DockVertical=Vertical;edge=Edge.Floating;floating=Position;anchor=pointer;e.Pointer.Capture(rail);ArrangeDock(true);}
+ void BeginMove(object? sender,PointerPressedEventArgs e){if(!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;var pointer=this.PointToScreen(e.GetPosition(this));dragOffset=new PixelPoint(pointer.X-Position.X,pointer.Y-Position.Y);dragging=true;selectedScreen=null;prefs.DockVertical=Vertical;edge=Edge.Floating;floating=Position;anchor=pointer;e.Pointer.Capture(rail);ArrangeDock(true);}
  void Move(object? sender,PointerEventArgs e){if(!dragging)return;anchor=this.PointToScreen(e.GetPosition(this));floating=new PixelPoint(anchor.X-dragOffset.X,anchor.Y-dragOffset.Y);Position=floating;}
  void EndMove(object? sender,PointerReleasedEventArgs e){if(!dragging)return;dragging=false;e.Pointer.Capture(null);floating=Position;var area=WorkArea;edge=DockPlacement.Snap(Position,new PixelSize((int)(Width*Scale),(int)(Height*Scale)),area,Scale);anchor=DockPlacement.Center(area);RememberPlacement();BuildRail();ArrangeDock(true);}
  internal void ShowModule(string id){
@@ -112,7 +125,7 @@ sealed class DockWindow:Window,IDisposable {
  }
  void Animate(){
   double now=clock.Elapsed.TotalSeconds,dt=now-last;last=now;bool moving=width.Step(dt,reduced)|height.Step(dt,reduced)|bodyHeight.Step(dt,reduced);
-  var area=WorkArea;Width=Math.Min(area.Width/Scale,Math.Max(72,width.Value));Height=Math.Min(area.Height/Scale,Math.Max(72,height.Value));
+  var area=WorkArea;previousArea=area;Width=Math.Min(area.Width/Scale,Math.Max(72,width.Value));Height=Math.Min(area.Height/Scale,Math.Max(72,height.Value));
   if(Vertical){rail.Width=72;rail.Height=Math.Min(RailLength,Height);Canvas.SetLeft(rail,edge==Edge.Right?Width-72:0);Canvas.SetTop(rail,(Height-rail.Height)/2);panel.Width=Math.Max(0,Width-72);panel.Height=Math.Min(Height,bodyHeight.Value);Canvas.SetLeft(panel,edge==Edge.Right?0:72);Canvas.SetTop(panel,(Height-panel.Height)/2);}
   else{rail.Width=Math.Min(RailLength,Width);rail.Height=72;Canvas.SetLeft(rail,(Width-rail.Width)/2);Canvas.SetTop(rail,edge==Edge.Bottom?Height-72:0);panel.Width=Width;panel.Height=Math.Max(0,Height-72);Canvas.SetLeft(panel,0);Canvas.SetTop(panel,edge==Edge.Bottom?0:72);}
   rail.CornerRadius=edge switch{Edge.Top=>new(0,0,28,28),Edge.Bottom=>new(28,28,0,0),Edge.Left=>new(0,28,28,0),Edge.Right=>new(28,0,0,28),_=>new(28)};
