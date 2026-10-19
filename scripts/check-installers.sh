@@ -52,6 +52,14 @@ else
     if [[ "$attempt" == installed ]]; then
       /Applications/TokenDock.app/Contents/MacOS/TokenDock --native-clipboard-check
       python3 desktop/native/mac-media-check.py /Applications/TokenDock.app/Contents/MacOS/TokenDock
+      python3 desktop/native/accessibility-check.py /Applications/TokenDock.app/Contents/MacOS/TokenDock || {
+        result=$?
+        if [[ "$result" == 77 ]]; then
+          echo '::warning::Installed bundle accessibility remains unverified: AX client permission denied.'
+        else
+          exit "$result"
+        fi
+      }
     fi
   done
   cleanup

@@ -8,7 +8,7 @@ The owner requires full parity before publication. A token-only prototype, web m
 
 Avalonia replaces WPF/window/tray/clipboard integration in the port. Linux uses playerctl/MPRIS and GStreamer; macOS uses a bundled MediaRemote Now Playing adapter (with AppleScript fallback for Music/Spotify) and AVFoundation for camera capture. Shared counters use each OS's SQLite library; native memory adapters are implemented. Windows retains its existing WPF edition.
 
-## Required parity — validation remains open
+## Required parity â€” validation remains open
 
 | Feature | Linux | macOS |
 | --- | --- | --- |
@@ -65,3 +65,5 @@ remain release gates. There is still no release/upload step for these binaries.
 CI launches an isolated synthetic dock and reads its accessibility tree from another process: Linux uses AT-SPI (the interface used by Orca), and macOS uses NSAccessibility/AX (used by VoiceOver). The probes check names/roles in music, Copies, camera and settings and invoke the rail's Camera action through the OS accessibility API. This opens a synthetic frame only. macOS preflights existing AX client permission without displaying a prompt or modifying TCC; denial is explicitly **unverified**, never a pass. This validates the bridge, not spoken output or complete usability with Orca/VoiceOver.
 
 Camera error fixtures return denial and device-unavailable failures through the real child-process protocol before any device API runs. Tests verify the error reaches the UI and no stale frame survives. The Mac helper can report its existing authorization status without requesting access; denied and policy-restricted states have distinct guidance. Real TCC prompts/revocation and physical device interruption remain unverified. Synthetic unreadable-file tests also verify that denied shelf imports preserve the original.
+
+The external macOS probe exposed missing action advertisement in Avalonia 12.1.4 even though AXPress could activate the button. The pinned native backend patch in `desktop/native/avalonia` explicitly advertises supported actions. CI requires AXPress on Camera and checks the installed hardened-runtime bundle as well as the framework-dependent build. The Linux probe retries only stale-object errors during panel replacement; persistent errors still fail.
