@@ -38,7 +38,13 @@ else
   hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$out/TokenDock-$runtime.dmg"
   codesign --verify --deep --strict "$mount/TokenDock.app"
   "$mount/TokenDock.app/Contents/MacOS/TokenDock" --check "$out/dmg-checks"
-  hdiutil detach "$mount"
+  # Spotlight/diskimages can briefly retain the read-only volume after app exit.
+  detached=false
+  for retry in 1 2 3 4 5; do
+    if hdiutil detach "$mount"; then detached=true; break; fi
+    sleep 2
+  done
+  [[ "$detached" == true ]] || { echo 'DMG remains busy after app exit.' >&2; exit 1; }
   for attempt in installed reinstalled; do
     sudo installer -pkg "$out/TokenDock-$runtime.pkg" -target /
     codesign --verify --deep --strict /Applications/TokenDock.app

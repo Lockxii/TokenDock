@@ -56,7 +56,14 @@ if [[ "$runtime" == osx-* ]]; then
   mkdir "$out/pkg-root"
   cp -R "$bundle" "$out/pkg-root/TokenDock.app"
   pkgbuild --analyze --root "$out/pkg-root" "$out/components.plist"
-  /usr/libexec/PlistBuddy -c 'Set :0:BundleIsRelocatable false' "$out/components.plist"
+  python3 - "$out/components.plist" <<'PYCODE'
+import pathlib, plistlib, sys
+path = pathlib.Path(sys.argv[1])
+components = plistlib.loads(path.read_bytes())
+for component in components:
+    component['BundleIsRelocatable'] = False
+path.write_bytes(plistlib.dumps(components))
+PYCODE
   pkg_command=(pkgbuild)
   if [[ -n "${MACOS_INSTALLER_IDENTITY:-}" ]]; then
     [[ "$MACOS_INSTALLER_IDENTITY" == 'Developer ID Installer: '* ]] || exit 2
