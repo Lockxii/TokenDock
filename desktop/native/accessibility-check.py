@@ -69,7 +69,10 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
             return nodes
         until(lambda: (directory/'ready').exists(), 'Fixture did not open')
         until(lambda: any(n['name']=='Camera' for n in tree()), 'Camera action absent from native accessibility tree')
-        advertised = any(n['name']=='Camera' and n['actions'] for n in tree())
+        initial = tree()
+        camera = next(n for n in initial if n['name']=='Camera')
+        print('Native Camera peer:', json.dumps(camera), flush=True)
+        advertised = ('AXPress' in camera['actions']) if mac else bool(camera['actions'])
         tree(True)
         until(lambda: any(n['name']=='Take photo' for n in tree()), 'Native accessibility action did not open Camera')
         assert advertised, 'Camera is invokable but does not advertise native accessibility actions'

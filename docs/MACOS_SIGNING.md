@@ -9,7 +9,7 @@ Status: prepared, not distribution-validated. Ordinary native CI signs developme
 - A Developer ID Installer certificate **and private key** for PKG distribution.
 - A `notarytool` keychain profile created with your Apple Developer credentials. Use Apple's interactive `xcrun notarytool store-credentials TokenDock` flow; never put passwords, API keys, or certificate exports in this repository, issues, or chat.
 
-Inspect installed identities using `security find-identity -v -p codesigning`. Configure the following in the signing shell, using your own certificate names (these names are not secrets):
+Inspect installed identities using `security find-identity -v` (use `-p codesigning` to filter application signing identities). Configure the following in the signing shell, using your own certificate names (these names are not secrets):
 
 ```bash
 export MACOS_APP_IDENTITY='Developer ID Application: YOUR NAME (TEAMID)'
@@ -50,7 +50,7 @@ Prepare these items **in a protected secret store, never in chat or Git**:
 | Export password(s) | The password used to encrypt each `.p12`. |
 | Apple team | The Team ID that owns both certificates. |
 | Notarization authentication | The Apple ID associated with the team and an **app-specific password**, not its normal sign-in password. Alternatively, a team App Store Connect API `.p8` private key, Key ID and Issuer ID with the required access. Use one authentication method. |
-| Identity names | Exact `Developer ID Application: … (TEAMID)` and `Developer ID Installer: … (TEAMID)` names. These names and Team ID can be shared as non-secret configuration. |
+| Identity names | Exact `Developer ID Application: â€¦ (TEAMID)` and `Developer ID Installer: â€¦ (TEAMID)` names. These names and Team ID can be shared as non-secret configuration. |
 
 For a future signing workflow, create a protected GitHub environment named `macos-signing`, restrict it to the reviewed signing ref, and require a maintainer review. Suggested secret names are `MACOS_APP_P12_BASE64`, `MACOS_APP_P12_PASSWORD`, `MACOS_INSTALLER_P12_BASE64`, `MACOS_INSTALLER_P12_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_SPECIFIC_PASSWORD`. Base64 only transports the encrypted export; it is not encryption. These names are a handoff convention, **not an enabled secret-consuming workflow**. The credential-free validation workflow never reads these secrets.
 
