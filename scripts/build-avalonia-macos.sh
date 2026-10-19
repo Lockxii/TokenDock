@@ -19,5 +19,5 @@ if ! git -C "$source" apply --reverse --check "$patch_file" 2>/dev/null; then
   git -C "$source" apply "$patch_file"
 fi
 (cd "$source" && dotnet build native/Avalonia.Native/Avalonia.Native.macOS.proj -c Release --nologo)
-cp "$source/artifacts/native/Release/libAvalonia.Native.OSX.dylib" "$out/"
+cp "$source/artifacts/native/Release/libAvalonia.Native.OSX.dylib" "$out/libAvaloniaNative.dylib"
 cp "$root/desktop/native/avalonia/LICENSE" "$out/Avalonia-LICENSE.txt"
