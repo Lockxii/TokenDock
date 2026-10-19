@@ -12,7 +12,7 @@ if mac:
 else:
     import dbus
     bus = dbus.SessionBus()
-    status = dbus.Interface(bus.get_object('org.a11y.Bus', '/org/a11y/status'), 'org.freedesktop.DBus.Properties')
+    status = dbus.Interface(bus.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.freedesktop.DBus.Properties')
     status.Set('org.a11y.Status', 'IsEnabled', dbus.Boolean(True))
     import pyatspi
 

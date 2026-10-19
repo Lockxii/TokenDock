@@ -20,7 +20,7 @@ var pressed = false
 func visit(_ element: AXUIElement, _ depth: Int) {
     guard depth < 32, nodes.count < 2000 else { return }
     let role = attribute(element, kAXRoleAttribute) as? String ?? ""
-    let name = attribute(element, kAXTitleAttribute) as? String ?? attribute(element, kAXDescriptionAttribute) as? String ?? ""
+    let name = [attribute(element, kAXTitleAttribute) as? String, attribute(element, kAXDescriptionAttribute) as? String].compactMap { $0 }.first { !$0.isEmpty } ?? ""
     var names: CFArray?
     AXUIElementCopyActionNames(element, &names)
     let actions = names as? [String] ?? []
