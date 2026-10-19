@@ -21,6 +21,9 @@ static class DesktopChecks {
   }finally{Directory.Delete(temp,true);}
   var history=new CopyHistory();for(int i=0;i<25;i++)history.Add(CopyItem.FromText("fixture "+i));Check(history.Items.Count==20,"History bound");history.Remove(history.Items[0].Key);Check(history.Items.Count==19,"Individual removal");
   Check(Track.Parse("test\u001fTitle\u001fArtist\u001f\u001f120\u001f500\u001fPlaying").Position==120,"Media timeline clamp");
+  Check(Track.Parse("test\u001fTitle\u001fArtist\u001f\u001f1e300\u001f1,5\u001fPlaying").Length==604800,"Untrusted media duration is bounded");
+  Check(Track.Parse("test\u001fTitle\u001fArtist\u001f\u001f120\u001f1,5\u001fPlaying").Position==1.5,"Localized player decimals");
+  Check(Copies.Excluded(["org.nspasteboard.ConcealedType"]),"Concealed clipboard payload is excluded");
   using var dock=new DockWindow(true);dock.Show();
   foreach(var edge in Enum.GetValues<Edge>())foreach(var module in new[]{"all","codex","music","clipboard","camera","cat","settings"}){
    dock.SetEdge(edge);dock.ShowModule(module);dock.Settle();Dispatcher.UIThread.RunJobs();

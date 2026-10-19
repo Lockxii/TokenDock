@@ -6,7 +6,7 @@ sealed record Track(string Player,string Title,string Artist,string Artwork,doub
  public static Track Empty=new("","Nothing playing","","",0,0,false);
  public static Track Parse(string text){
   var p=text.Split('\u001f');if(p.Length!=7)throw new IOException("Invalid media metadata.");
-  double Number(string s)=>double.TryParse(s,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)?Math.Max(0,n):0;
+  double Number(string s)=>double.TryParse(s.Replace(',','.'),NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)?Math.Clamp(n,0,7*24*60*60):0;
   double length=Number(p[4]);return new(p[0],p[1],p[2],p[3],length,Math.Min(length,Number(p[5])),p[6] is "Playing" or "playing");
  }
 }
@@ -40,13 +40,14 @@ sealed class Music:IDisposable {
   }finally{busy=false;}
  }
  async Task<byte[]?> ReadArt(string location){
+  using var timeout=CancellationTokenSource.CreateLinkedTokenSource(stop.Token);timeout.CancelAfter(TimeSpan.FromSeconds(5));
   try{
    Stream stream;
    if(Path.IsPathFullyQualified(location)&&File.Exists(location)){if(new FileInfo(location).Length>4*1024*1024)return null;stream=File.OpenRead(location);}
    else if(Uri.TryCreate(location,UriKind.Absolute,out var uri)&&uri.IsFile){if(new FileInfo(uri.LocalPath).Length>4*1024*1024)return null;stream=File.OpenRead(uri.LocalPath);}
-   else if(Uri.TryCreate(location,UriKind.Absolute,out uri)&&uri.Scheme=="https")stream=await http.GetStreamAsync(uri,stop.Token);
+   else if(Uri.TryCreate(location,UriKind.Absolute,out uri)&&uri.Scheme=="https")stream=await http.GetStreamAsync(uri,timeout.Token);
    else return null;
-   await using(stream){using var bytes=new MemoryStream();byte[] buffer=new byte[16384];int n;while((n=await stream.ReadAsync(buffer,stop.Token))>0){if(bytes.Length+n>4*1024*1024)return null;bytes.Write(buffer,0,n);}return ImageBytes.Valid(bytes.ToArray())?bytes.ToArray():null;}
+   await using(stream){using var bytes=new MemoryStream();byte[] buffer=new byte[16384];int n;while((n=await stream.ReadAsync(buffer,timeout.Token))>0){if(bytes.Length+n>4*1024*1024)return null;bytes.Write(buffer,0,n);}return ImageBytes.Valid(bytes.ToArray())?bytes.ToArray():null;}
   }catch(Exception e)when(e is IOException or UnauthorizedAccessException or HttpRequestException or OperationCanceledException){return null;}
  }
  async Task<string> Mac(string command,string? value=null){
