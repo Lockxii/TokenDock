@@ -7,7 +7,7 @@ case "$(uname -s)" in
  Darwin)
   source="$root/desktop/native/vendor/mediaremote-adapter"
   build="$root/artifacts/mediaremote-build"
-  cmake -S "$source" -B "$build" -DCMAKE_BUILD_TYPE=Release
+  cmake -S "$source" -B "$build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
   cmake --build "$build" --config Release --parallel 2
   cp -R "$build/MediaRemoteAdapter.framework" "$out/native/"
   cp "$source/bin/mediaremote-adapter.pl" "$out/native/"
@@ -16,7 +16,7 @@ case "$(uname -s)" in
   mkdir -p "$bundle/Contents/MacOS"
   cp "$root/desktop/native/Camera-Info.plist" "$bundle/Contents/Info.plist"
   helper="$bundle/Contents/MacOS/tokendock-camera"
-  swiftc -swift-version 5 -O "$root/desktop/native/Camera.swift" -o "$helper" -framework AVFoundation -framework CoreVideo
+  swiftc -swift-version 5 -target "$(uname -m)-apple-macosx13.0" -O "$root/desktop/native/Camera.swift" -o "$helper" -framework AVFoundation -framework CoreVideo
   codesign --force --sign - "$bundle"
   ;;
  Linux)

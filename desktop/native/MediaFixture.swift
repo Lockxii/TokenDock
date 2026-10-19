@@ -18,10 +18,12 @@ NSBezierPath(rect: NSRect(x: 0, y: 0, width: 32, height: 32)).fill()
 picture.unlockFocus()
 let artwork = MPMediaItemArtwork(boundsSize: picture.size) { _ in picture }
 func publish() {
+    FileHandle.standardError.write(Data("fixture: playing=\(playing), position=\(position), track=\(track)\n".utf8))
     center.nowPlayingInfo = [MPMediaItemPropertyTitle: track == 1 ? "Synthetic track" : "Synthetic next",
         MPMediaItemPropertyArtist: "TokenDock fixture", MPMediaItemPropertyPlaybackDuration: 120.0,
         MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
         MPNowPlayingInfoPropertyPlaybackRate: playing ? 1.0 : 0.0,
+        MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
         MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.audio.rawValue,
         MPMediaItemPropertyArtwork: artwork]
     center.playbackState = playing ? .playing : .paused

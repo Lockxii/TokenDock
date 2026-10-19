@@ -30,16 +30,17 @@ sealed class Music:IDisposable {
     value=await ProcessRunner.Run("playerctl",["metadata","--format",format],stop.Token);
    }else if(OperatingSystem.IsMacOS()){
     if(MacNowPlaying.Available){
-     try{var snapshot=MacNowPlaying.Parse(await MacNowPlaying.Run(["get","--now"],stop.Token));nativeTrack=snapshot.Track;nativeArt=snapshot.Artwork;systemPlayer=true;macPlayer="system";value="";}
+     try{var snapshot=MacNowPlaying.Parse(await MacNowPlaying.Run(["get","--now"],stop.Token));nativeTrack=snapshot.Track;nativeArt=snapshot.Artwork;systemPlayer=true;macPlayer="system";value="";
+      if(nativeTrack==Track.Empty){try{value=await Mac("status");systemPlayer=false;}catch(IOException){macPlayer="system";}}}
      catch(Exception e)when(e is IOException or OperationCanceledException){value=await Mac("status");}
     }else value=await Mac("status");
    }
    else{Status="Use the Windows edition for native media integration.";return;}
-   var track=systemPlayer?nativeTrack!:Track.Parse(value);byte[]? art=systemPlayer?nativeArt:Artwork;
+   var track=systemPlayer?nativeTrack!:Track.Parse(value);var observedAt=DateTime.UtcNow;byte[]? art=systemPlayer?nativeArt:Artwork;
    string key=track.Artwork+"|"+track.Title;
    if(!systemPlayer&&key!=artKey){art=await ReadArt(track.Artwork);}
    if(disposed||!enabled||version!=generation)return;
-   Track=track;sampled=DateTime.UtcNow;Artwork=art;artKey=key;Status="";Changed?.Invoke();
+   Track=track;sampled=observedAt;Artwork=art;artKey=key;Status="";Changed?.Invoke();
   }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException or HttpRequestException){
    if(!disposed&&enabled&&version==generation){Track=Track.Empty;Artwork=null;artKey=null;Status=OperatingSystem.IsLinux()?"No MPRIS player. Install playerctl if missing.":"No Now Playing session. Start playback in a compatible player.";Changed?.Invoke();}
   }finally{busy=false;}
