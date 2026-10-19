@@ -36,8 +36,10 @@ if [[ "$runtime" == osx-* ]]; then
   codesign --force --sign - "$bundle/Contents/MacOS/native/TokenDockCamera.app"
   codesign --force --deep --sign - --entitlements desktop/native/entitlements.plist "$bundle"
   codesign --verify --deep --strict "$bundle"
+  "$bundle/Contents/MacOS/TokenDock" --check "$out/package-checks"
 else
   mkdir -p "$out/publish/share/applications"
   printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=TokenDock' "Exec=$out/publish/TokenDock" 'Terminal=false' 'Categories=Utility;' > "$out/publish/share/applications/tokendock.desktop"
+  "$out/publish/TokenDock" --check "$out/package-checks"
 fi
 echo "Development package only: $out. Native parity and distribution validation gates remain closed."

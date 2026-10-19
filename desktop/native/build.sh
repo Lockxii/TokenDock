@@ -10,8 +10,8 @@ case "$(uname -s)" in
   cmake -S "$source" -B "$build" -DCMAKE_BUILD_TYPE=Release
   cmake --build "$build" --config Release --parallel 2
   cp -R "$build/MediaRemoteAdapter.framework" "$out/native/"
-  cp "$source/bin/mediaremote-adapter.pl" "$source/LICENSE" "$out/native/"
-  cp "$build/MediaRemoteAdapterTestClient" "$out/native/"
+  cp "$source/bin/mediaremote-adapter.pl" "$out/native/"
+  cp "$source/LICENSE" "$out/native/MediaRemote-LICENSE.txt"
   bundle="$out/native/TokenDockCamera.app"
   mkdir -p "$bundle/Contents/MacOS"
   cp "$root/desktop/native/Camera-Info.plist" "$bundle/Contents/Info.plist"

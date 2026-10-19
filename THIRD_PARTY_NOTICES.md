@@ -14,4 +14,4 @@ Linux camera capture dynamically links the system's GStreamer libraries (LGPL); 
 
 ## MediaRemote Adapter (native macOS development port)
 
-Vendored from https://github.com/ungive/mediaremote-adapter at commit `0e82bf1c44ec39554fbfc402ec88a48c6ae2a0fd`. Copyright (c) 2025 Jonas van den Berg and contributors. BSD-3-Clause; full license is in `desktop/native/vendor/mediaremote-adapter/LICENSE` and shipped as `native/LICENSE`. Built from source; no downloaded executable.
+Vendored from https://github.com/ungive/mediaremote-adapter at commit `0e82bf1c44ec39554fbfc402ec88a48c6ae2a0fd`. Copyright (c) 2025 Jonas van den Berg and contributors. BSD-3-Clause; full license is in `desktop/native/vendor/mediaremote-adapter/LICENSE` and shipped as `native/MediaRemote-LICENSE.txt`. Built from source; no downloaded executable.

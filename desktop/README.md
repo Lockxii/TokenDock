@@ -48,7 +48,8 @@ sudo apt-get install build-essential pkg-config libgstreamer1.0-dev \
   gstreamer1.0-plugins-good playerctl libfontconfig1 libice6 libsm6
 ```
 
-On macOS, install Xcode Command Line Tools (`xcode-select --install`).
+On macOS, install Xcode Command Line Tools (`xcode-select --install`) and CMake.
+The pinned MediaRemote source is built locally; no precompiled adapter is downloaded.
 
 ```sh
 dotnet publish desktop -c Release --no-self-contained -o artifacts/desktop
@@ -84,15 +85,18 @@ for development; Developer ID signing/notarization has not been completed.
 
 ## Verification and publication gate
 
-CI builds the desktop and native helpers on Linux/macOS and runs:
+CI builds the desktop and native helpers on Linux/macOS, on x64 and ARM64, and runs:
 
 - Shared-core checks against system memory/SQLite, with synthetic usage logs.
 - All five dock placements and all panels; bounded history, round-photo alpha,
   original-file preservation, rapid retargeting and camera cancellation fixtures.
 - MPRIS metadata and controls against a fake player in an isolated D-Bus session.
+- macOS system Now Playing metadata, artwork, pause, seeking and track controls
+  against a synthetic MediaPlayer session with no audio output.
 - Native text/image/photo-file clipboard roundtrips on an isolated X11 display and
   a disposable macOS runner. These checks refuse to run outside marked CI sessions.
 - Apple Music script compilation; no player is launched for this check.
+- Self-contained package smoke checks, including the ad-hoc signed macOS bundle.
 
 Camera self-tests send a fixed 2×2 packet and never enumerate or open devices.
 CI uploads fixture renders only, not installable binaries. Physical-camera tests,
