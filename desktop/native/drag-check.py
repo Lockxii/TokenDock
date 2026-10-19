@@ -63,20 +63,13 @@ with tempfile.TemporaryDirectory(prefix='tokendock-drag-') as temp:
     finally:
         for role,p in zip(('source','sink'),processes):
             if p.poll() is not None: continue
-            try:
-                if mac:
-                    x,y=map(int,(root/(role+'.ready')).read_text().split())
-                    event('down',x+10,y+10);event('up',x+10,y+10)
-                    subprocess.run([str(helper),'escape'],check=True)
-                else:
-                    win=xdo('search','--name','^TokenDock drag '+role+'$').splitlines()[0]
-                    xdo('windowfocus','--sync',win)
-                    xdo('key','Escape')
-                p.wait(timeout=5)
-            except (subprocess.SubprocessError,IndexError,OSError,ValueError):
+            (root/(role+'.stop')).write_text('stop')
+            try: p.wait(timeout=5)
+            except subprocess.TimeoutExpired:
                 p.terminate()
                 try: p.wait(timeout=5)
                 except subprocess.TimeoutExpired: p.kill();p.wait()
+    assert all(p.returncode==0 for p in processes), 'Fixture did not shut down gracefully'
 
     if (root/'shelf.paths').exists():
         assert all(not pathlib.Path(p).exists() for p in (root/'shelf.paths').read_text().splitlines()), 'Shelf files survived graceful shutdown'
