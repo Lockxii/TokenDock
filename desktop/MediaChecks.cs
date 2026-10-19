@@ -1,6 +1,16 @@
 using Avalonia.Threading;
 namespace TokenDock;
 static class MediaChecks {
+ public static int Empty(){
+  if(!OperatingSystem.IsMacOS()||Environment.GetEnvironmentVariable("CI")!="true"||Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated")throw new InvalidOperationException("Use an isolated macOS CI session.");
+  var watch=System.Diagnostics.Stopwatch.StartNew();
+  while(watch.ElapsedMilliseconds<10000){
+   var raw=Task.Run(()=>MacNowPlaying.Run(["get","--now"],CancellationToken.None)).GetAwaiter().GetResult();
+   if(MacNowPlaying.Parse(raw).Track==Track.Empty){Console.WriteLine("PASS: closed native player clears the system Now Playing session.");return 0;}
+   Thread.Sleep(100);
+  }
+  throw new InvalidOperationException("A closed player retained a stale system session.");
+ }
  public static int Run(){
   bool mac=OperatingSystem.IsMacOS();
   if(mac&&(Environment.GetEnvironmentVariable("CI")!="true"||Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated"))throw new InvalidOperationException("Use an isolated macOS CI session.");

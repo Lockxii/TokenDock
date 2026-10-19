@@ -22,3 +22,6 @@ finally:
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=5)
+
+# A disappeared process must not keep a ghost track in the dock.
+subprocess.run(['dotnet', sys.argv[1], '--media-empty-check'], check=True, timeout=20)

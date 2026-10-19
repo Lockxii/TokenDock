@@ -10,9 +10,9 @@ static class Program {
  internal static bool NativeClipboardCheck;
  [STAThread]public static int Main(string[] args){
   System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.GetCultureInfo("en-US");
-  if(args.Contains("--check")||args.Contains("--media-check")){
+  if(args.Contains("--check")||args.Contains("--media-check")||args.Contains("--media-empty-check")){
    AppBuilder.Configure<DockApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions{UseHeadlessDrawing=false}).SetupWithoutStarting();
-   return args.Contains("--media-check")?MediaChecks.Run():DesktopChecks.Run(args);
+   return args.Contains("--media-empty-check")?MediaChecks.Empty():args.Contains("--media-check")?MediaChecks.Run():DesktopChecks.Run(args);
   }
   NativeClipboardCheck=args.Contains("--native-clipboard-check");
   if(NativeClipboardCheck&&(Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated"||Environment.GetEnvironmentVariable("CI")!="true"))throw new InvalidOperationException("Native clipboard checks are CI-only.");

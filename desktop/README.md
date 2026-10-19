@@ -48,6 +48,9 @@ sudo apt-get install build-essential pkg-config libgstreamer1.0-dev \
   gstreamer1.0-plugins-good playerctl libfontconfig1 libice6 libsm6
 ```
 
+The macOS development target is **macOS 15 or newer**, matching the current
+[.NET 10 OS support policy](https://github.com/dotnet/core/blob/main/release-notes/10.0/supported-os.md).
+
 On macOS, install Xcode Command Line Tools (`xcode-select --install`) and CMake.
 The pinned MediaRemote source is built locally; no precompiled adapter is downloaded.
 
