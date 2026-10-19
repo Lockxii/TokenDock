@@ -46,7 +46,15 @@ with tempfile.TemporaryDirectory(prefix='tokendock-drag-') as temp:
         wait_for(lambda: all((root/(role+'.ready')).exists() for role in ('source','sink')))
         positions=[(60,60),(460,60)]
         if mac:
-            positions=[tuple(map(int,subprocess.check_output([str(helper),'bounds',str(p.pid)],text=True).split())) for p in processes]
+            def locate():
+                found=[]
+                for p in processes:
+                    result=subprocess.run([str(helper),'bounds',str(p.pid)],capture_output=True,text=True)
+                    if result.returncode: return False
+                    found.append(tuple(map(int,result.stdout.split())))
+                positions[:]=found
+                return True
+            wait_for(locate)
         (sx,sy),(tx,ty)=positions
         for count,y in enumerate((42,98),1):
             drag(sx+140,sy+y,tx+150,ty+170)

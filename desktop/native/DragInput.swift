@@ -9,7 +9,7 @@ if action == "preflight" { exit(CGPreflightPostEventAccess() ? 0 : 77) }
 guard CGPreflightPostEventAccess() else { exit(77) }
 if action == "bounds", args.count == 2, let pid = Int(args[1]) {
     let windows = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] ?? []
-    for window in windows where window[kCGWindowOwnerPID as String] as? Int == pid && window[kCGWindowLayer as String] as? Int == 0 {
+    for window in windows where window[kCGWindowOwnerPID as String] as? Int == pid {
         if let bounds = window[kCGWindowBounds as String] as? [String: Any], let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary), rect.width > 100 {
             print("\(Int(rect.minX)) \(Int(rect.minY))")
             exit(0)
