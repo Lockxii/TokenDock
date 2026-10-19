@@ -52,7 +52,16 @@ if [[ "$runtime" == osx-* ]]; then
   mkdir -p "$stage"
   cp -R "$bundle" "$stage/TokenDock.app"
   ln -s /Applications "$stage/Applications"
-  hdiutil create -volname TokenDock -srcfolder "$stage" -format UDZO "$out/TokenDock-$runtime.dmg"
+  # hdiutil's automatic estimate can under-allocate for a single-file apphost.
+  # Count logical bytes (not sparse disk blocks), plus filesystem headroom.
+  image_mb=$(python3 - "$stage" <<'PYCODE'
+import math, os, pathlib, sys
+size = sum(p.stat().st_size for folder, _, files in os.walk(sys.argv[1])
+           for name in files if not (p := pathlib.Path(folder, name)).is_symlink())
+print(math.ceil(size * 1.25 / (1024 * 1024)) + 128)
+PYCODE
+  )
+  hdiutil create -size "${image_mb}m" -fs HFS+ -volname TokenDock -srcfolder "$stage" -format UDZO "$out/TokenDock-$runtime.dmg"
   mkdir "$out/pkg-root"
   cp -R "$bundle" "$out/pkg-root/TokenDock.app"
   pkgbuild --analyze --root "$out/pkg-root" "$out/components.plist"
