@@ -31,8 +31,8 @@ sealed class Music:IDisposable {
    }else if(OperatingSystem.IsMacOS()){
     if(MacNowPlaying.Available){
      try{var snapshot=MacNowPlaying.Parse(await MacNowPlaying.Run(["get","--now"],stop.Token));nativeTrack=snapshot.Track;nativeArt=snapshot.Artwork;systemPlayer=true;macPlayer="system";value="";
-      if(nativeTrack==Track.Empty){try{value=await Mac("status");systemPlayer=false;}catch(IOException){macPlayer="system";}}}
-     catch(Exception e)when(e is IOException or OperationCanceledException){value=await Mac("status");}
+      if(nativeTrack==Track.Empty){try{value=await Mac("status");systemPlayer=false;}catch(IOException e)when(!AutomationDenied(e)){macPlayer="system";}}}
+     catch(Exception e)when(e is OperationCanceledException || e is IOException&&!AutomationDenied(e)){value=await Mac("status");}
     }else value=await Mac("status");
    }
    else{Status="Use the Windows edition for native media integration.";return;}
@@ -43,7 +43,7 @@ sealed class Music:IDisposable {
    if(art!=null&&Artwork!=null&&art.AsSpan().SequenceEqual(Artwork))art=Artwork;
    Track=track;sampled=observedAt;Artwork=art;artKey=key;Status="";Changed?.Invoke();
   }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException or HttpRequestException){
-   if(!disposed&&enabled&&version==generation){Track=Track.Empty;Artwork=null;artKey=null;Status=OperatingSystem.IsLinux()?"No MPRIS player. Install playerctl if missing.":"No Now Playing session. Start playback in a compatible player.";Changed?.Invoke();}
+   if(!disposed&&enabled&&version==generation){Track=Track.Empty;Artwork=null;artKey=null;Status=FailureStatus(e,OperatingSystem.IsLinux());Changed?.Invoke();}
   }finally{busy=false;}
  }
  async Task<byte[]?> ReadArt(string location){
@@ -62,12 +62,12 @@ sealed class Music:IDisposable {
    // Inspect running bundles without launching missing apps or compiling their dictionaries.
    const string script="ObjC.import('AppKit'); $.NSWorkspace.sharedWorkspace.runningApplications.js.map(x => x.bundleIdentifier.js).filter(x => x === 'com.spotify.client' || x === 'com.apple.Music').join('\\n')";
    var running=await ProcessRunner.Run("/usr/bin/osascript",["-l","JavaScript","-e",script],stop.Token);
-   Track? fallback=null;string? result=null;
+   Track? fallback=null;string? result=null;IOException? denied=null;
    foreach(var player in new[]{"spotify","apple"}){
     if(!running.Contains(player=="spotify"?"com.spotify.client":"com.apple.Music",StringComparison.Ordinal))continue;
-    try{var raw=await ReadMacPlayer(player,command,value);var track=Track.Parse(raw);if(track.Playing){macPlayer=player;return raw;}if(fallback==null){fallback=track;result=raw;macPlayer=player;}}catch(IOException){}
+    try{var raw=await ReadMacPlayer(player,command,value);var track=Track.Parse(raw);if(track.Playing){macPlayer=player;return raw;}if(fallback==null){fallback=track;result=raw;macPlayer=player;}}catch(IOException e){if(AutomationDenied(e))denied=e;}
    }
-   return result??throw new IOException("No supported player is running.");
+   return result??throw (denied??new IOException("No supported player is running."));
   }
   if(macPlayer.Length==0)throw new IOException("No selected player.");
   return await ReadMacPlayer(macPlayer,command,value);
@@ -83,8 +83,10 @@ sealed class Music:IDisposable {
     else await Mac(command,number);
    }
    await Refresh();
-  }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException){Status="The player did not accept this control.";Changed?.Invoke();}
+  }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException){Status=FailureStatus(e,OperatingSystem.IsLinux(),true);Changed?.Invoke();}
  }
+ internal static bool AutomationDenied(Exception error)=>error is IOException&&error.Message.Contains("(-1743)",StringComparison.Ordinal);
+ internal static string FailureStatus(Exception error,bool linux,bool control=false)=>!linux&&AutomationDenied(error)?"Music control access denied. Enable TokenDock for your player in System Settings > Privacy & Security > Automation.":control?"The player did not accept this control.":linux?"No MPRIS player. Install playerctl if missing.":"No Now Playing session. Start playback in a compatible player.";
  public void Dispose(){disposed=true;timer.Stop();stop.Cancel();http.Dispose();try{File.Delete(artworkPath);}catch(IOException){}catch(UnauthorizedAccessException){}}
 }
 static class ImageBytes {

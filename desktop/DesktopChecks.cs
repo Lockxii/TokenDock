@@ -7,6 +7,13 @@ static class DesktopChecks {
  public static int Run(string[] args){
   int checks=0;void Check(bool condition,string name){if(!condition)throw new InvalidOperationException(name);checks++;}
   string directory=args.Length>1?args[1]:Path.Combine(Path.GetTempPath(),"tokendock-render-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
+  Check(Music.FailureStatus(new IOException("execution error: synthetic denial (-1743)"),false).Contains("Automation"),"Automation denial provides permission guidance");
+  Check(!Music.FailureStatus(new IOException("No session"),false).Contains("denied"),"Missing player is not misreported as a permission denial");
+  if(OperatingSystem.IsMacOS()){
+   Exception? denied=null;try{Task.Run(()=>ProcessRunner.Run("/usr/bin/osascript",["-e","error \"Synthetic denial; no Apple event sent\" number -1743"])).GetAwaiter().GetResult();}catch(IOException e){denied=e;}
+   Check(denied!=null&&Music.AutomationDenied(denied),"Native AppleScript denial code survives process boundary without contacting a player");
+   Check(Music.FailureStatus(denied!,false,true).Contains("Automation"),"Denied media command shows actionable permission guidance");
+  }
   var spring=new Spring(0){Target=400};for(int i=0;i<8;i++)spring.Step(.016);double before=spring.Value,velocity=spring.Velocity;spring.Target=150;Check(spring.Value==before&&spring.Velocity==velocity,"Retarget preserves motion");for(int i=0;i<100;i++)spring.Step(.016);Check(spring.Value==150,"Interrupted transition settles");
   var area=new PixelRect(-1920,0,1920,1080);foreach(var edge in Enum.GetValues<Edge>()){var position=DockPlacement.Locate(edge,area,new PixelSize(400,200),new PixelPoint(-900,300));Check(area.Contains(position),"Placement on negative-coordinate monitor");}
   var monitors=new[]{new PixelRect(-1920,24,1920,1056),new PixelRect(0,0,2560,1400),new PixelRect(2560,-900,1600,900)};
