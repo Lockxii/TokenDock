@@ -28,7 +28,7 @@ sealed class Camera:IDisposable {
  public CameraFrame? Frame{get;private set;}public string Status{get;private set;}="Opening camera…";
  public event Action? Changed;
  internal void SetFixture(CameraFrame frame){if(!fixture)throw new InvalidOperationException("Fixture capture only.");Frame=frame;Status="Synthetic preview";}
- internal static string HelperPath=>OperatingSystem.IsMacOS()?Path.Combine(AppContext.BaseDirectory,"native","TokenDockCamera.app","Contents","MacOS","tokendock-camera"):Path.Combine(AppContext.BaseDirectory,"native","tokendock-camera");
+ internal static string HelperPath=>AppFiles.Camera;
  public Camera(bool fixture=false,string? helper=null){this.fixture=fixture;this.helper=helper??HelperPath;}
  public void SetActive(bool active){
   if(disposed||active==(session!=null))return;

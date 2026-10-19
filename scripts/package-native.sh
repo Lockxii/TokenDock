@@ -29,7 +29,12 @@ cp desktop/README.md "$out/publish/DEVELOPMENT.md"
 if [[ "$runtime" == osx-* ]]; then
   bundle="$out/TokenDock.app"
   mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
-  cp -R "$out/publish/." "$bundle/Contents/MacOS/"
+  cp -R "$out/publish/." "$bundle/Contents/Resources/"
+  mv "$bundle/Contents/Resources/TokenDock" "$bundle/Contents/MacOS/TokenDock"
+  for library in "$bundle/Contents/Resources/"*.dylib; do mv "$library" "$bundle/Contents/MacOS/"; done
+  mkdir -p "$bundle/Contents/Helpers" "$bundle/Contents/Frameworks"
+  mv "$bundle/Contents/Resources/native/TokenDockCamera.app" "$bundle/Contents/Helpers/"
+  mv "$bundle/Contents/Resources/native/MediaRemoteAdapter.framework" "$bundle/Contents/Frameworks/"
   cp desktop/native/Info.plist "$bundle/Contents/Info.plist"
   iconset="$out/TokenDock.iconset"
   mkdir -p "$iconset"

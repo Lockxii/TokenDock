@@ -6,9 +6,9 @@ namespace TokenDock;
 // browsers and third-party players. No application is launched to discover media.
 static class MacNowPlaying {
  internal const int MaximumJson=6*1024*1024;
- static string Native=>Path.Combine(AppContext.BaseDirectory,"native");
- internal static bool Available=>File.Exists(Path.Combine(Native,"mediaremote-adapter.pl"))&&Directory.Exists(Path.Combine(Native,"MediaRemoteAdapter.framework"));
- internal static Task<string> Run(IEnumerable<string> arguments,CancellationToken token)=>ProcessRunner.Run("/usr/bin/perl",new[]{Path.Combine(Native,"mediaremote-adapter.pl"),Path.Combine(Native,"MediaRemoteAdapter.framework")}.Concat(arguments),token,MaximumJson);
+ static string Native=>Path.Combine(AppFiles.Resources,"native");
+ internal static bool Available=>File.Exists(Path.Combine(Native,"mediaremote-adapter.pl"))&&Directory.Exists(AppFiles.MediaFramework);
+ internal static Task<string> Run(IEnumerable<string> arguments,CancellationToken token)=>ProcessRunner.Run("/usr/bin/perl",new[]{Path.Combine(Native,"mediaremote-adapter.pl"),AppFiles.MediaFramework}.Concat(arguments),token,MaximumJson);
  internal static string[] Control(string command,double position)=>command switch {
   "play-pause"=>["send","2"],"next"=>["send","4"],"previous"=>["send","5"],
   "position" when double.IsFinite(position)=>["seek",((long)(Math.Clamp(position,0,604800)*1_000_000)).ToString(CultureInfo.InvariantCulture)],

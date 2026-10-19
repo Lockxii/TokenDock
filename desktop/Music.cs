@@ -72,7 +72,7 @@ sealed class Music:IDisposable {
   if(macPlayer.Length==0)throw new IOException("No selected player.");
   return await ReadMacPlayer(macPlayer,command,value);
  }
- Task<string> ReadMacPlayer(string player,string command,string? value)=>ProcessRunner.Run("/usr/bin/osascript",[Path.Combine(AppContext.BaseDirectory,"native",$"music-{player}.applescript"),command,value??"",artworkPath],stop.Token);
+ Task<string> ReadMacPlayer(string player,string command,string? value)=>ProcessRunner.Run("/usr/bin/osascript",[Path.Combine(AppFiles.Resources,"native",$"music-{player}.applescript"),command,value??"",artworkPath],stop.Token);
  public async Task Command(string command,double value=0){
   if(!enabled||command is not("play-pause" or "previous" or "next" or "position"))return;
   try{

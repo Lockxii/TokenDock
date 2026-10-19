@@ -22,7 +22,7 @@ The output directory must not already exist. This is an explicit Apple submissio
 
 ## What the scripts do
 
-1. Build the self-contained app and native helpers on the matching architecture.
+1. Build a self-contained single-file managed app on the matching architecture. Keep the apphost/native libraries in `Contents/MacOS`, data/scripts in `Contents/Resources`, the camera app in `Contents/Helpers`, and MediaRemote in `Contents/Frameworks`.
 2. Sign every Mach-O dependency, then framework bundles and the camera app, then the outer app. Signing is inside-out; `--deep` is used only for verification.
 3. Enable hardened runtime. The .NET host receives JIT and Apple Events permissions; the camera helper receives camera permission. No sandbox, debugger, unsigned-executable-memory or library-validation bypass entitlement is added. Real permission prompts still require validation.
 4. Verify nested signatures and execute synthetic app/helper checks.

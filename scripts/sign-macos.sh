@@ -4,7 +4,7 @@ set -euo pipefail
 [[ "$(uname -s)" == Darwin ]] || { echo 'macOS required' >&2; exit 2; }
 root="$(cd "$(dirname "$0")/.." && pwd)"
 bundle="${1:?Usage: sign-macos.sh APP_BUNDLE}"
-[[ -d "$bundle/Contents/MacOS/native/TokenDockCamera.app" && -f "$bundle/Contents/MacOS/TokenDock" ]] || exit 2
+[[ -d "$bundle/Contents/Helpers/TokenDockCamera.app" && -f "$bundle/Contents/MacOS/TokenDock" ]] || exit 2
 identity="${MACOS_APP_IDENTITY:--}"
 flags=(--force --sign "$identity" --options runtime)
 if [[ "$identity" == - ]]; then
@@ -21,7 +21,7 @@ while IFS= read -r -d '' binary; do
   fi
 done < <(find "$bundle/Contents" -type f -print0)
 while IFS= read -r -d '' framework; do codesign "${flags[@]}" "$framework"; done < <(find "$bundle/Contents" -depth -type d -name '*.framework' -print0)
-codesign "${flags[@]}" --entitlements "$root/desktop/native/camera-entitlements.plist" "$bundle/Contents/MacOS/native/TokenDockCamera.app"
+codesign "${flags[@]}" --entitlements "$root/desktop/native/camera-entitlements.plist" "$bundle/Contents/Helpers/TokenDockCamera.app"
 codesign "${flags[@]}" --entitlements "$root/desktop/native/entitlements.plist" "$bundle"
 codesign --verify --deep --strict "$bundle"
 codesign -d --entitlements :- "$bundle" > /dev/null

@@ -20,10 +20,10 @@ static class Ui {
 }
 static class Assets {
  static readonly Dictionary<string,Bitmap> cache=[];
- public static Bitmap Get(string name){if(!cache.TryGetValue(name,out var image))cache[name]=image=new Bitmap(Path.Combine(AppContext.BaseDirectory,"assets",name));return image;}
+ public static Bitmap Get(string name){if(!cache.TryGetValue(name,out var image))cache[name]=image=new Bitmap(Path.Combine(AppFiles.Resources,"assets",name));return image;}
  public static Bitmap CatFrame(int frame,int heat){
   string key=$"cat-{frame}-{heat}";if(cache.TryGetValue(key,out var cached))return cached;
-  using var source=SkiaSharp.SKBitmap.Decode(Path.Combine(AppContext.BaseDirectory,"assets","cat-run.png"));
+  using var source=SkiaSharp.SKBitmap.Decode(Path.Combine(AppFiles.Resources,"assets","cat-run.png"));
   int a=(int)Math.Round(frame*source.Width/8d),b=(int)Math.Round((frame+1)*source.Width/8d);using var crop=new SkiaSharp.SKBitmap(b-a,200);
   using(var canvas=new SkiaSharp.SKCanvas(crop))canvas.DrawBitmap(source,new SkiaSharp.SKRect(a,270,b,470),new SkiaSharp.SKRect(0,0,crop.Width,200));
   if(heat>0){var pixels=crop.Pixels;for(int i=0;i<pixels.Length;i++){var p=pixels[i];pixels[i]=new SkiaSharp.SKColor(p.Red,(byte)(p.Green*(heat==2?.45:.75)),(byte)(p.Blue*.4),p.Alpha);}crop.Pixels=pixels;}

@@ -54,7 +54,7 @@ sealed class DockWindow:Window,IDisposable {
  void InitTray(){
   var menu=new NativeMenu();void Add(string name,Action action){var item=new NativeMenuItem(name);item.Click+=(_,_)=>action();menu.Items.Add(item);}
   Add("Show TokenDock",()=>{Show();Activate();});Add("Customize",()=>{Show();ShowModule("settings");});Add("Quit",Quit);
-  tray=new TrayIcon{Icon=new WindowIcon(Path.Combine(AppContext.BaseDirectory,"assets","tokendock.ico")),ToolTipText="TokenDock",Menu=menu,IsVisible=true};tray.Clicked+=(_,_)=>{Show();Activate();};TrayIcon.SetIcons(Application.Current!,new TrayIcons{tray});
+  tray=new TrayIcon{Icon=new WindowIcon(Path.Combine(AppFiles.Resources,"assets","tokendock.ico")),ToolTipText="TokenDock",Menu=menu,IsVisible=true};tray.Clicked+=(_,_)=>{Show();Activate();};TrayIcon.SetIcons(Application.Current!,new TrayIcons{tray});
  }
  void Quit(){Dispose();if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)desktop.Shutdown();}
  internal void SetEdge(Edge value){edge=value;prefs.DockEdge=value.ToString();if(value!=Edge.Floating)prefs.DockVertical=value is Edge.Left or Edge.Right;floating=Position;RememberPlacement();BuildRail();ArrangeDock(true);}
