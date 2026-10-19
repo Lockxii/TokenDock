@@ -24,13 +24,17 @@ func publish() {
         MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
         MPNowPlayingInfoPropertyPlaybackRate: playing ? 1.0 : 0.0,
         MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
+        MPNowPlayingInfoPropertyCurrentPlaybackDate: Date(),
         MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.audio.rawValue,
         MPMediaItemPropertyArtwork: artwork]
     center.playbackState = playing ? .playing : .paused
 }
 func register(_ command: MPRemoteCommand, _ action: @escaping (MPRemoteCommandEvent)->Void) {
     command.isEnabled = true
-    command.addTarget { event in action(event); publish(); return .success }
+    command.addTarget { event in
+        DispatchQueue.main.async { action(event); publish() }
+        return .success
+    }
 }
 register(controls.togglePlayPauseCommand) { _ in playing.toggle() }
 register(controls.playCommand) { _ in playing = true }

@@ -5,7 +5,8 @@ static class MediaChecks {
   bool mac=OperatingSystem.IsMacOS();
   if(mac&&(Environment.GetEnvironmentVariable("CI")!="true"||Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated"))throw new InvalidOperationException("Use an isolated macOS CI session.");
   using var music=new Music();
-  void Until(Func<bool> done){var watch=System.Diagnostics.Stopwatch.StartNew();while(!done()&&watch.ElapsedMilliseconds<10000){Dispatcher.UIThread.RunJobs();Thread.Sleep(10);}if(!done())throw new InvalidOperationException("Media fixture timed out: "+music.Status+"; state="+music.Track+"; position="+music.Position);}
+  // Headless dispatcher timers are not a native event loop. Explicitly pump polling.
+  void Until(Func<bool> done){var watch=System.Diagnostics.Stopwatch.StartNew();long refreshAt=0;while(!done()&&watch.ElapsedMilliseconds<10000){Dispatcher.UIThread.RunJobs();if(watch.ElapsedMilliseconds>=refreshAt){_=music.Refresh();refreshAt=watch.ElapsedMilliseconds+250;}Thread.Sleep(10);}if(!done())throw new InvalidOperationException("Media fixture timed out: "+music.Status+"; state="+music.Track+"; position="+music.Position);}
   void Command(string name,double value=0){var task=music.Command(name,value);Until(()=>task.IsCompleted);task.GetAwaiter().GetResult();}
   music.Enable(true);Until(()=>music.Track.Player==(mac?"app.tokendock.mediafixture":"TokenDockFixture"));
   if(music.Track.Title!="Synthetic track"||music.Track.Length!=120||!music.Track.Playing)throw new InvalidOperationException("Media metadata mismatch.");
