@@ -27,7 +27,8 @@ sealed class Camera:IDisposable {
  readonly string helper;readonly bool fixture;
  public CameraFrame? Frame{get;private set;}public string Status{get;private set;}="Opening camera…";
  public event Action? Changed;
- public Camera(bool fixture=false,string? helper=null){this.fixture=fixture;this.helper=helper??Path.Combine(AppContext.BaseDirectory,"native","tokendock-camera");}
+ internal static string HelperPath=>OperatingSystem.IsMacOS()?Path.Combine(AppContext.BaseDirectory,"native","TokenDockCamera.app","Contents","MacOS","tokendock-camera"):Path.Combine(AppContext.BaseDirectory,"native","tokendock-camera");
+ public Camera(bool fixture=false,string? helper=null){this.fixture=fixture;this.helper=helper??HelperPath;}
  public void SetActive(bool active){
   if(disposed||active==(session!=null))return;
   generation++;session?.Cancel();session=null;Frame=null;

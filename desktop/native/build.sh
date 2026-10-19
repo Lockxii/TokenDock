@@ -5,14 +5,20 @@ out="${1:?Usage: build.sh OUTPUT_DIRECTORY}"
 mkdir -p "$out/native"
 case "$(uname -s)" in
  Darwin)
-  swiftc -swift-version 5 -O "$root/desktop/native/Camera.swift" -o "$out/native/tokendock-camera" -framework AVFoundation -framework CoreVideo
+  bundle="$out/native/TokenDockCamera.app"
+  mkdir -p "$bundle/Contents/MacOS"
+  cp "$root/desktop/native/Camera-Info.plist" "$bundle/Contents/Info.plist"
+  helper="$bundle/Contents/MacOS/tokendock-camera"
+  swiftc -swift-version 5 -O "$root/desktop/native/Camera.swift" -o "$helper" -framework AVFoundation -framework CoreVideo
+  codesign --force --sign - "$bundle"
   ;;
  Linux)
-  cc -Wall -Wextra -Werror -O2 "$root/desktop/native/camera-linux.c" -o "$out/native/tokendock-camera" $(pkg-config --cflags --libs gstreamer-app-1.0 gstreamer-video-1.0)
+  helper="$out/native/tokendock-camera"
+  cc -Wall -Wextra -Werror -O2 "$root/desktop/native/camera-linux.c" -o "$helper" $(pkg-config --cflags --libs gstreamer-app-1.0 gstreamer-video-1.0)
   ;;
  *) echo "This helper is for Linux and macOS." >&2; exit 2;;
 esac
-"$out/native/tokendock-camera" --self-test > "$out/native/frame.fixture"
+"$helper" --self-test > "$out/native/frame.fixture"
 python3 - "$out/native/frame.fixture" <<'PY'
 import pathlib, struct, sys
 data = pathlib.Path(sys.argv[1]).read_bytes()

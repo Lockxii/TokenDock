@@ -13,7 +13,7 @@ on run argv
    else if action is "position" then
     set player position to targetPosition as real
    end if
-   set song to current track
-   return "Spotify" & sep & (name of song) & sep & (artist of song) & sep & (artwork url of song) & sep & ((duration of song) / 1000) & sep & player position & sep & (player state as text)
+   set currentSong to current track
+   return "Spotify" & sep & (name of currentSong) & sep & (artist of currentSong) & sep & (artwork url of currentSong) & sep & ((duration of currentSong) / 1000) & sep & player position & sep & (player state as text)
   end tell
 end run

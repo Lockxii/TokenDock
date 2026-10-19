@@ -13,10 +13,10 @@ on run argv
    else if action is "position" then
     set player position to targetPosition as real
    end if
-   set song to current track
+   set currentSong to current track
    set art to ""
    try
-    set picture to raw data of artwork 1 of song
+    set picture to raw data of artwork 1 of currentSong
     set handle to open for access POSIX file artPath with write permission
     try
      set eof handle to 0
@@ -27,6 +27,6 @@ on run argv
      close access handle
     end try
    end try
-   return "Music" & sep & (name of song) & sep & (artist of song) & sep & art & sep & (duration of song) & sep & player position & sep & (player state as text)
+   return "Music" & sep & (name of currentSong) & sep & (artist of currentSong) & sep & art & sep & (duration of currentSong) & sep & player position & sep & (player state as text)
   end tell
 end run

@@ -30,7 +30,7 @@ static class DesktopChecks {
    image!.Save(Path.Combine(directory,$"{edge}-{module}.png"),new Avalonia.Media.Imaging.PngBitmapEncoderOptions());dock.Collapse();Check(!dock.Expanded,"Panel closes");
   }
   foreach(var id in Enumerable.Range(0,120).Select(i=>new[]{"camera","clipboard","music","cat"}[i%4])){dock.ShowModule(id);Dispatcher.UIThread.RunJobs();Check(dock.Selected==id,"Rapid retarget keeps latest module");}dock.Settle();
-  string helper=Path.Combine(AppContext.BaseDirectory,"native","tokendock-camera");
+  string helper=Camera.HelperPath;
   if(File.Exists(helper)){
    using var camera=new Camera(true,helper);int frames=0;camera.Changed+=()=>{if(camera.Frame!=null)frames++;};camera.SetActive(true);
    var watch=System.Diagnostics.Stopwatch.StartNew();while(!camera.Stopped.IsCompleted&&watch.ElapsedMilliseconds<5000){Dispatcher.UIThread.RunJobs();Thread.Sleep(5);}Check(camera.Stopped.IsCompleted&&frames>0,"Native synthetic camera reaches the UI");

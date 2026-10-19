@@ -15,7 +15,7 @@ if [[ "$runtime" == osx-* ]]; then
   cp -R "$out/publish/." "$bundle/Contents/MacOS/"
   cp desktop/native/Info.plist "$bundle/Contents/Info.plist"
   # Ad-hoc signing is only for local development. It is not notarization.
-  codesign --force --sign - "$bundle/Contents/MacOS/native/tokendock-camera"
+  codesign --force --sign - "$bundle/Contents/MacOS/native/TokenDockCamera.app"
   codesign --force --deep --sign - --entitlements desktop/native/entitlements.plist "$bundle"
   codesign --verify --deep --strict "$bundle"
 else

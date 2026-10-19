@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+ <key>CFBundleName</key><string>TokenDock Camera</string>
+ <key>CFBundleIdentifier</key><string>io.github.lockxii.tokendock.camera</string>
+ <key>CFBundleExecutable</key><string>tokendock-camera</string>
+ <key>CFBundlePackageType</key><string>APPL</string>
+ <key>LSUIElement</key><true/>
+ <key>NSCameraUsageDescription</key><string>Show the camera only while TokenDock's Camera panel is open and take photos when requested.</string>
+</dict></plist>
