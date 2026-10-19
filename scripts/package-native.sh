@@ -11,6 +11,9 @@ host_arch=x64
 if [[ "$runtime" != "$host_os-$host_arch" ]]; then
   echo "Build on a matching $runtime host so the native camera helper cannot have the wrong architecture." >&2; exit 2
 fi
+if [[ -n "${MACOS_NOTARY_PROFILE:-}" ]]; then
+  [[ "$runtime" == osx-* && "${MACOS_APP_IDENTITY:-}" == 'Developer ID Application: '* && "${MACOS_INSTALLER_IDENTITY:-}" == 'Developer ID Installer: '* ]] || { echo 'Notarization requires both Developer ID identities on macOS.' >&2; exit 2; }
+fi
 out="$root/artifacts/native-$runtime"
 if [[ -e "$out" ]]; then echo "Refusing to overwrite an existing package directory." >&2; exit 1; fi
 mkdir -p "$out"
@@ -32,11 +35,9 @@ if [[ "$runtime" == osx-* ]]; then
     sips -z "$double" "$double" assets/tokendock-icon.png --out "$iconset/icon_${size}x${size}@2x.png" >/dev/null
   done
   iconutil -c icns "$iconset" -o "$bundle/Contents/Resources/TokenDock.icns"
-  # Ad-hoc signing is only for local development. It is not notarization.
-  codesign --force --sign - "$bundle/Contents/MacOS/native/TokenDockCamera.app"
-  codesign --force --deep --sign - --entitlements desktop/native/entitlements.plist "$bundle"
-  codesign --verify --deep --strict "$bundle"
+  bash scripts/sign-macos.sh "$bundle"
   "$bundle/Contents/MacOS/TokenDock" --check "$out/package-checks"
+  if [[ -n "${MACOS_NOTARY_PROFILE:-}" ]]; then bash scripts/notarize-macos.sh "$bundle"; fi
   # Development distribution containers; no Developer ID or notarization claim.
   stage="$out/dmg-root"
   mkdir -p "$stage"
@@ -47,7 +48,18 @@ if [[ "$runtime" == osx-* ]]; then
   cp -R "$bundle" "$out/pkg-root/TokenDock.app"
   pkgbuild --analyze --root "$out/pkg-root" "$out/components.plist"
   /usr/libexec/PlistBuddy -c 'Set :0:BundleIsRelocatable false' "$out/components.plist"
-  pkgbuild --root "$out/pkg-root" --component-plist "$out/components.plist" --install-location /Applications --identifier io.github.lockxii.tokendock --version 0.3.0 "$out/TokenDock-$runtime.pkg"
+  pkg_sign=()
+  if [[ -n "${MACOS_INSTALLER_IDENTITY:-}" ]]; then
+    [[ "$MACOS_INSTALLER_IDENTITY" == 'Developer ID Installer: '* ]] || exit 2
+    pkg_sign=(--sign "$MACOS_INSTALLER_IDENTITY" --timestamp)
+  fi
+  pkgbuild "${pkg_sign[@]}" --root "$out/pkg-root" --component-plist "$out/components.plist" --install-location /Applications --identifier io.github.lockxii.tokendock --version 0.3.0 "$out/TokenDock-$runtime.pkg"
+  if [[ -n "${MACOS_NOTARY_PROFILE:-}" ]]; then
+    : "${MACOS_INSTALLER_IDENTITY:?Developer ID Installer identity required}"
+    codesign --sign "$MACOS_APP_IDENTITY" --timestamp "$out/TokenDock-$runtime.dmg"
+    bash scripts/notarize-macos.sh "$out/TokenDock-$runtime.dmg"
+    bash scripts/notarize-macos.sh "$out/TokenDock-$runtime.pkg"
+  fi
 else
   "$out/publish/TokenDock" --check "$out/package-checks"
   stage="$out/deb-root"

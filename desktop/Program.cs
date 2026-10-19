@@ -11,9 +11,9 @@ static class Program {
  internal static bool NativeClipboardCheck;internal static string[]? NativeDragArgs;
  [STAThread]public static int Main(string[] args){
   System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.GetCultureInfo("en-US");
-  if(args.Contains("--check")||args.Contains("--media-check")||args.Contains("--media-empty-check")){
+  if(args.Contains("--perf-check")||args.Contains("--check")||args.Contains("--media-check")||args.Contains("--media-empty-check")){
    AppBuilder.Configure<DockApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions{UseHeadlessDrawing=false}).SetupWithoutStarting();
-   return args.Contains("--media-empty-check")?MediaChecks.Empty():args.Contains("--media-check")?MediaChecks.Run():DesktopChecks.Run(args);
+   return args.Contains("--perf-check")?QualityChecks.Performance(args):args.Contains("--media-empty-check")?MediaChecks.Empty():args.Contains("--media-check")?MediaChecks.Run():DesktopChecks.Run(args);
   }
   if(args.Length==3&&args[0]=="--native-drag-check"){
    if(Environment.GetEnvironmentVariable("CI")!="true"||Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated"||args[1] is not("source" or "sink"))throw new InvalidOperationException("Native drag tests are CI-only.");

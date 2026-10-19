@@ -127,3 +127,11 @@ CI uploads fixture renders only, not installable binaries. Physical-camera tests
 real player permissions, external drag targets, compositor behavior, accessibility,
 resource measurements and clean installation are still required by
 [the release gate](../docs/PLATFORMS.md). No automatic release workflow bypasses it.
+
+## Accessibility and performance evidence
+
+`--check` inspects accessible names through Avalonia automation peers, exercises keyboard reordering in Customize and Escape dismissal. Native screen-reader interaction (VoiceOver/Orca), complete focus traversal and user testing remain release gates. The music timeline supports keyboard seeking; Customize supports Alt+arrow reordering. Pointer exit does not dismiss a panel containing keyboard focus.
+
+`dotnet artifacts/desktop/TokenDock.dll --perf-check artifacts/performance.json` measures 200 synthetic module changes after warmup: elapsed time, process CPU, per-five-module-cycle p50/p95, allocated bytes, retained managed growth and working set. CI stores the JSON for each target. These are headless fixture measurements, not real desktop idle CPU, battery usage or camera throughput. Broad 32 MiB retained-growth and 90-second guards detect gross leaks/hangs; they are not product performance promises. Album art is decoded again only when the artwork changes or the panel is rebuilt.
+
+See [macOS signing](../docs/MACOS_SIGNING.md) for the prepared distribution signing path. No credentials or releases are created by validation CI.

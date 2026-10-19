@@ -27,6 +27,8 @@ jobs:
         run: bash desktop/native/build.sh artifacts/desktop
       - name: Desktop and module checks (no hardware)
         run: dotnet artifacts/desktop/TokenDock.dll --check artifacts/desktop-renders
+      - name: Synthetic switching performance and allocation evidence
+        run: dotnet artifacts/desktop/TokenDock.dll --perf-check artifacts/performance.json
       - name: Linux music integration (isolated D-Bus fixture)
         if: runner.os == 'Linux'
         run: dbus-run-session -- /usr/bin/python3 desktop/native/mpris-fixture.py artifacts/desktop/TokenDock.dll
@@ -76,7 +78,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-renders-${{ matrix.os }}
-          path: artifacts/desktop-renders/*.png
+          path: |
+            artifacts/desktop-renders/*.png
+            artifacts/performance.json
   core:
     strategy:
       fail-fast: false

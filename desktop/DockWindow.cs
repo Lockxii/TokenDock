@@ -21,17 +21,17 @@ sealed class DockWindow:Window,IDisposable {
  readonly DispatcherTimer live=new(){Interval=TimeSpan.FromMilliseconds(60)};int refreshPending;
  Preferences prefs;Cat? cat;Edge edge=Edge.Top;bool expanded,disposed,dragging,reordering,reduced;string selected="all",pending="all",pressedId="";
  Point press;PixelPoint dragOffset,floating,anchor;bool shelfDragging;TrayIcon? tray;MemoryInfo memory;Meter[] meters=[];
- TextBlock? featured,counter,details,ramNumber,ramPercent,musicTitle,musicArtist,musicTime,cameraStatus,errorLabel;Slider? seek;ProgressBar? ramBar;Image? cameraImage,musicImage;Button? play;Bitmap? frameBitmap,artBitmap,barArt;byte[]? lastArt;
+ TextBlock? featured,counter,details,ramNumber,ramPercent,musicTitle,musicArtist,musicTime,cameraStatus,errorLabel;Slider? seek;ProgressBar? ramBar;Image? cameraImage,musicImage;Button? play;Bitmap? frameBitmap,artBitmap,barArt;byte[]? lastArt,panelArt;
  readonly StackPanel copyCards=new(){Spacing=8};double targetBody=240;int tick;
  public DockWindow(bool fixture=false){
   this.fixture=fixture;prefs=fixture?new Preferences{Music=true,ClipboardHistory=true,Camera=true}:Preferences.Load();prefs.Normalize();Enum.TryParse(prefs.DockEdge,out edge);floating=anchor=new PixelPoint(prefs.DockX,prefs.DockY);reduced=prefs.ReduceMotion;camera=new Camera(fixture);copies=new Copies(this);if(fixture){byte[] pixels=new byte[128*128*4];for(int y=0;y<128;y++)for(int x=0;x<128;x++){int n=(y*128+x)*4;pixels[n]=180;pixels[n+1]=(byte)(y*2);pixels[n+2]=(byte)(x*2);pixels[n+3]=255;}var frame=new CameraFrame(128,128,pixels);camera.SetFixture(frame);music.SetFixture(frame.RoundPng());copies.Add(CopyItem.FromText("A synthetic clipboard entry")!);copies.Add(CopyItem.FromPng(frame.RoundPng())!);}
   Title="TokenDock";WindowDecorations=WindowDecorations.None;CanResize=false;ShowInTaskbar=false;Topmost=true;Background=Brushes.Transparent;TransparencyLevelHint=[WindowTransparencyLevel.Transparent];
   Width=440;Height=72;Content=canvas;panel.Child=new ScrollViewer{Content=content,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,VerticalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Auto};canvas.Children.Add(panel);canvas.Children.Add(rail);rail.Child=new ScrollViewer{Content=icons,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden,VerticalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden};panel.IsVisible=false;
-  panel.PointerEntered+=(_,_)=>close.Stop();rail.PointerEntered+=(_,_)=>{close.Stop();if(!expanded&&!dragging&&!reordering)ShowModule("all");};PointerExited+=(_,_)=>{if(!dragging&&!reordering&&!shelfDragging)close.Start();};close.Tick+=(_,_)=>{close.Stop();if(!shelfDragging)Collapse();};
+  panel.PointerEntered+=(_,_)=>close.Stop();rail.PointerEntered+=(_,_)=>{close.Stop();if(!expanded&&!dragging&&!reordering)ShowModule("all");};PointerExited+=(_,_)=>{if(!dragging&&!reordering&&!shelfDragging)close.Start();};close.Tick+=(_,_)=>{close.Stop();if(!shelfDragging&&!panel.IsKeyboardFocusWithin)Collapse();};
   hover.Tick+=(_,_)=>{hover.Stop();ShowModule(pending);};motion.Tick+=(_,_)=>Animate();
   sample.Tick+=(_,_)=>Sample();live.Tick+=(_,_)=>{live.Stop();Interlocked.Exchange(ref refreshPending,0);meters=meter.Snapshot();SampleContent();};meter.Changed+=ScheduleRead;custom.Changed+=ScheduleRead;
   rail.PointerPressed+=BeginMove;rail.PointerMoved+=Move;rail.PointerReleased+=EndMove;
-  KeyDown+=(_,e)=>{if(e.Key==Key.Escape){Collapse();e.Handled=true;}};
+  KeyDown+=(_,e)=>{if(e.Key==Key.Escape){var focus=selected;Collapse();if(buttons.TryGetValue(focus,out var origin))origin.Focus();e.Handled=true;}};
   DragDrop.SetAllowDrop(this,true);AddHandler(DragDrop.DragOverEvent,DragOver);AddHandler(DragDrop.DropEvent,Drop);AddHandler(DragDrop.DragLeaveEvent,(_,_)=>{if(!shelfDragging)close.Start();});
   Screens.Changed+=DisplaysChanged;ScalingChanged+=DisplaysChanged;
   copies.Changed+=()=>{if(selected=="clipboard"&&expanded)BuildCopies();};copies.Error+=ShowError;
@@ -137,13 +137,13 @@ sealed class DockWindow:Window,IDisposable {
  }
  Control BuildTokens(string id){counter=Ui.Text("0",42);details=Ui.Text("",13,Ui.Muted);if(!graphs.TryGetValue(id,out var graph))graphs[id]=graph=new TokenGraph();if(graph.Parent is StackPanel parent)parent.Children.Remove(graph);return Ui.Stack(Ui.Text(prefs.Name(id),14,Ui.Muted),counter,graph,details);}
  Control BuildRam(){ramNumber=Ui.Text("",42);ramBar=new ProgressBar{Height=5,Maximum=100,Foreground=Ui.Mint};ramPercent=Ui.Text("",13,Ui.Mint);return Ui.Stack(Ui.Text("Available RAM",14,Ui.Muted),ramNumber,ramBar,ramPercent);}
- Control BuildMusic(){musicImage=new Image{Width=100,Height=100,Stretch=Stretch.UniformToFill};musicTitle=Ui.Text("Nothing playing",22);musicArtist=Ui.Text("",13,Ui.Muted);musicTime=Ui.Text("",12,Ui.Muted);seek=new Slider{Minimum=0,Maximum=1,Height=20};Avalonia.Automation.AutomationProperties.SetName(seek,"Playback position");seek.AddHandler(PointerReleasedEvent,async(_,_)=>await music.Command("position",seek.Value),Avalonia.Interactivity.RoutingStrategies.Bubble,true);
+ Control BuildMusic(){musicImage=new Image{Width=100,Height=100,Stretch=Stretch.UniformToFill};musicTitle=Ui.Text("Nothing playing",22);musicArtist=Ui.Text("",13,Ui.Muted);musicTime=Ui.Text("",12,Ui.Muted);seek=new Slider{Minimum=0,Maximum=1,Height=20};Avalonia.Automation.AutomationProperties.SetName(seek,"Playback position");seek.KeyUp+=async(_,e)=>{if(e.Key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End or Key.PageUp or Key.PageDown){await music.Command("position",seek.Value);e.Handled=true;}};seek.AddHandler(PointerReleasedEvent,async(_,_)=>await music.Command("position",seek.Value),Avalonia.Interactivity.RoutingStrategies.Bubble,true);
   var transport=new StackPanel{Orientation=Orientation.Horizontal,Spacing=16,HorizontalAlignment=HorizontalAlignment.Center};transport.Children.Add(Ui.Button(Ui.Transport("previous"),()=>_=music.Command("previous"),"Previous track"));play=Ui.Button(Ui.Transport("play"),()=>_=music.Command("play-pause"),"Play or pause");transport.Children.Add(play);transport.Children.Add(Ui.Button(Ui.Transport("next"),()=>_=music.Command("next"),"Next track"));
   UpdateMusic();return Ui.Stack(musicImage,musicTitle,musicArtist,seek,musicTime,transport);
  }
  void UpdateMusic(){
   if(musicTitle!=null)musicTitle.Text=music.Track.Title;if(musicArtist!=null)musicArtist.Text=music.Status.Length>0?music.Status:music.Track.Artist;if(play!=null)play.Content=Ui.Transport(music.Track.Playing?"pause":"play");
-  if(musicImage!=null){var old=artBitmap;artBitmap=music.Artwork==null?null:new Bitmap(new MemoryStream(music.Artwork));musicImage.Source=artBitmap;musicImage.IsVisible=artBitmap!=null;old?.Dispose();}
+  if(musicImage!=null&&!ReferenceEquals(panelArt,music.Artwork)){panelArt=music.Artwork;var old=artBitmap;artBitmap=music.Artwork==null?null:new Bitmap(new MemoryStream(music.Artwork));musicImage.Source=artBitmap;musicImage.IsVisible=artBitmap!=null;old?.Dispose();}
   if(!ReferenceEquals(lastArt,music.Artwork)){var old=barArt;barArt=music.Artwork==null?null:new Bitmap(new MemoryStream(music.Artwork));lastArt=music.Artwork;if(buttons.TryGetValue("music",out var b))SetMusicButton(b);old?.Dispose();}
   if(buttons.TryGetValue("music",out var button))SetMusicButton(button);
   ArrangeDock();
@@ -191,7 +191,7 @@ sealed class DockWindow:Window,IDisposable {
  void ApplySettings(Preferences value){prefs=value;prefs.Normalize();reduced=prefs.ReduceMotion;SavePrefs();BuildRail();if(!fixture){custom.Configure(prefs.Sources);music.Enable(prefs.Music);copies.Enable(prefs.ClipboardHistory);}ShowModule("all");}
  void SavePrefs(){if(fixture)return;try{prefs.Save();}catch(Exception e)when(e is IOException or UnauthorizedAccessException){ShowError("Could not save preferences.");}}
  void ShowError(string message){if(content.Content is StackPanel stack){if(errorLabel?.Parent==stack)errorLabel.Text=message;else{errorLabel=Ui.Text(message,13,Ui.Muted);stack.Children.Add(errorLabel);}ResizeBody();}}
- void ClearTransient(){foreach(var bitmap in transient)bitmap.Dispose();transient.Clear();frameBitmap?.Dispose();frameBitmap=null;artBitmap?.Dispose();artBitmap=null;}
+ void ClearTransient(){foreach(var bitmap in transient)bitmap.Dispose();transient.Clear();frameBitmap?.Dispose();frameBitmap=null;artBitmap?.Dispose();artBitmap=null;panelArt=null;}
  public void Dispose(){if(disposed)return;disposed=true;Screens.Changed-=DisplaysChanged;ScalingChanged-=DisplaysChanged;live.Stop();sample.Stop();motion.Stop();hover.Stop();close.Stop();camera.Dispose();copies.Dispose();music.Dispose();meter.Dispose();custom.Dispose();tray?.Dispose();barArt?.Dispose();ClearTransient();}
  internal void Settle(){content.UpdateLayout();ResizeBody();width.Value=width.Target;height.Value=height.Target;bodyHeight.Value=bodyHeight.Target;width.Velocity=height.Velocity=bodyHeight.Velocity=0;Animate();content.UpdateLayout();}
  internal string Selected=>selected;internal bool Expanded=>expanded;

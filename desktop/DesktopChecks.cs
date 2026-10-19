@@ -61,6 +61,7 @@ static class DesktopChecks {
   }
   dock.FixtureDisplays([new PixelRect(0,0,1920,1080)],new PixelPoint(-500,200),1);dock.Settle();Check(dock.Position.X>=0,"Window recovers when its monitor disappears");
   foreach(var id in Enumerable.Range(0,120).Select(i=>new[]{"camera","clipboard","music","cat"}[i%4])){dock.ShowModule(id);Dispatcher.UIThread.RunJobs();Check(dock.Selected==id,"Rapid retarget keeps latest module");}dock.Settle();
+  checks+=QualityChecks.Accessibility(dock);
   string helper=Camera.HelperPath;
   if(File.Exists(helper)){
    using var camera=new Camera(true,helper);int frames=0;camera.Changed+=()=>{if(camera.Frame!=null)frames++;};camera.SetActive(true);
