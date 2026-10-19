@@ -21,4 +21,6 @@ case "down": type = .leftMouseDown
 case "up": type = .leftMouseUp
 default: exit(2)
 }
-CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: CGPoint(x: x, y: y), mouseButton: .left)?.post(tap: .cghidEventTap)
+let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: CGPoint(x: x, y: y), mouseButton: .left)
+event?.setIntegerValueField(.mouseEventClickState, value: 1)
+event?.post(tap: .cghidEventTap)

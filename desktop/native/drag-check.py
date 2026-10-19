@@ -17,6 +17,10 @@ def event(action,x,y):
     if mac: subprocess.run([str(helper),action,str(x),str(y)],check=True)
     elif action in ('move','drag'): xdo('mousemove','--sync',x,y)
     else: xdo('mousedown' if action=='down' else 'mouseup',1)
+def activate(x,y):
+    if mac:
+        event('move',x,y);event('down',x,y);event('up',x,y)
+        time.sleep(.3)
 def drag(x1,y1,x2,y2):
     event('move',x1,y1)
     event('down',x1,y1)
@@ -46,9 +50,12 @@ with tempfile.TemporaryDirectory(prefix='tokendock-drag-') as temp:
         wait_for(lambda: all((root/(role+'.ready')).exists() for role in ('source','sink')))
         positions=[tuple(map(int,(root/(role+'.ready')).read_text().split())) for role in ('source','sink')]
         (sx,sy),(tx,ty)=positions
+        print("Fixture origins:",positions,flush=True)
         for count,y in enumerate((42,98),1):
+            activate(sx+10,sy+10)
             drag(sx+140,sy+y,tx+150,ty+170)
             wait_for(lambda: (root/'sink.events').exists() and len((root/'sink.events').read_text().splitlines())==count)
+            activate(tx+10,ty+10)
             drag(tx+140,ty+42,sx+150,sy+170)
             wait_for(lambda: (root/'source.events').exists() and len((root/'source.events').read_text().splitlines())==count)
         assert (root/'space # café.txt').read_text(encoding='utf-8')=='Synthetic drag fixture'

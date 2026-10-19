@@ -21,6 +21,7 @@ sealed class NativeDragWindow:Window {
   }else Bind(stack,"Drag the stored snapshot back",()=>last);
   stack.Children.Add(new TextBlock{Text="Drop here",Height=80,Foreground=Brushes.White});
   DragDrop.SetAllowDrop(this,true);
+  AddHandler(PointerPressedEvent,(_,e)=>Console.WriteLine($"{role} pointer {e.GetPosition(this)}"),Avalonia.Interactivity.RoutingStrategies.Bubble,true);
   AddHandler(DragDrop.DragOverEvent,(_,e)=>{e.DragEffects=e.DataTransfer.Contains(DataFormat.File)?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;});
   AddHandler(DragDrop.DropEvent,async(_,e)=>{
    try{
@@ -43,8 +44,8 @@ sealed class NativeDragWindow:Window {
  }
  void Bind(StackPanel stack,string name,Func<CopyItem?> get){
   var button=new Border{Child=new TextBlock{Text=name,Foreground=Brushes.White},Background=Brushes.DarkSlateGray,Width=260,Height=44};stack.Children.Add(button);Point start=default;PointerPressedEventArgs? pressed=null;
-  button.PointerPressed+=(_,e)=>{if(e.GetCurrentPoint(button).Properties.IsLeftButtonPressed){start=e.GetPosition(button);pressed=e;}};
-  button.PointerMoved+=async(_,e)=>{if(pressed==null||((Vector)(e.GetPosition(button)-start)).Length<6)return;var trigger=pressed;pressed=null;var item=get();if(item==null)return;using var data=await item.Transfer(this);await DragDrop.DoDragDropAsync(trigger,data,DragDropEffects.Copy);};
+  button.PointerPressed+=(_,e)=>{if(e.GetCurrentPoint(button).Properties.IsLeftButtonPressed){start=e.GetPosition(button);pressed=e;Console.WriteLine($"{role} armed {name}");}};
+  button.PointerMoved+=async(_,e)=>{if(pressed==null||((Vector)(e.GetPosition(button)-start)).Length<6)return;var trigger=pressed;pressed=null;var item=get();if(item==null)return;Console.WriteLine($"{role} starts native drag {name}");using var data=await item.Transfer(this);await DragDrop.DoDragDropAsync(trigger,data,DragDropEffects.Copy);};
   button.PointerReleased+=(_,_)=>pressed=null;
  }
 }
