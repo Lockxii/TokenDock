@@ -13,7 +13,9 @@ static class QualityChecks {
   int count=0;
   foreach(var module in new[]{"all","music","clipboard","camera","cat","settings"}){
    dock.ShowModule(module);dock.Settle();Dispatcher.UIThread.RunJobs();
-   foreach(var control in dock.GetVisualDescendants().OfType<Control>().Where(c=>c is Button or Slider or TextBox or CheckBox)){
+   foreach(var expander in dock.GetVisualDescendants().OfType<Expander>().ToArray())expander.IsExpanded=true;
+   dock.Settle();Dispatcher.UIThread.RunJobs();
+   foreach(var control in dock.GetVisualDescendants().OfType<Control>().Where(c=>c is Button or Slider or TextBox or CheckBox or ComboBox)){
     if(!control.IsEffectivelyVisible||control is RepeatButton)continue;
     var peer=ControlAutomationPeer.CreatePeerForElement(control);
     if(string.IsNullOrWhiteSpace(peer?.GetName()))throw new InvalidOperationException($"Unnamed accessible control in {module}: {control.GetType().Name}");

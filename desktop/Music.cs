@@ -40,6 +40,7 @@ sealed class Music:IDisposable {
    string key=track.Artwork+"|"+track.Title;
    if(!systemPlayer&&key!=artKey){art=await ReadArt(track.Artwork);}
    if(disposed||!enabled||version!=generation)return;
+   if(art!=null&&Artwork!=null&&art.AsSpan().SequenceEqual(Artwork))art=Artwork;
    Track=track;sampled=observedAt;Artwork=art;artKey=key;Status="";Changed?.Invoke();
   }catch(Exception e)when(e is IOException or System.ComponentModel.Win32Exception or OperationCanceledException or HttpRequestException){
    if(!disposed&&enabled&&version==generation){Track=Track.Empty;Artwork=null;artKey=null;Status=OperatingSystem.IsLinux()?"No MPRIS player. Install playerctl if missing.":"No Now Playing session. Start playback in a compatible player.";Changed?.Invoke();}
