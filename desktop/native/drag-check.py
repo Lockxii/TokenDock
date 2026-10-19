@@ -44,17 +44,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-drag-') as temp:
         raise TimeoutError('Native drag fixture did not receive the expected data')
     try:
         wait_for(lambda: all((root/(role+'.ready')).exists() for role in ('source','sink')))
-        positions=[(60,60),(460,60)]
-        if mac:
-            def locate():
-                found=[]
-                for p in processes:
-                    result=subprocess.run([str(helper),'bounds',str(p.pid)],capture_output=True,text=True)
-                    if result.returncode: return False
-                    found.append(tuple(map(int,result.stdout.split())))
-                positions[:]=found
-                return True
-            wait_for(locate)
+        positions=[tuple(map(int,(root/(role+'.ready')).read_text().split())) for role in ('source','sink')]
         (sx,sy),(tx,ty)=positions
         for count,y in enumerate((42,98),1):
             drag(sx+140,sy+y,tx+150,ty+170)
@@ -65,9 +55,10 @@ with tempfile.TemporaryDirectory(prefix='tokendock-drag-') as temp:
         print('PASS: native cross-process file/photo drag into shelf and back, Unicode URLs, original bytes preserved.')
     finally:
         for role,p in zip(('source','sink'),processes):
+            if p.poll() is not None: continue
             try:
                 if mac:
-                    x,y=map(int,subprocess.check_output([str(helper),'bounds',str(p.pid)],text=True).split())
+                    x,y=map(int,(root/(role+'.ready')).read_text().split())
                     event('down',x+10,y+10);event('up',x+10,y+10)
                     subprocess.run([str(helper),'escape'],check=True)
                 else:
@@ -75,7 +66,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-drag-') as temp:
                     xdo('windowfocus','--sync',win)
                     xdo('key','Escape')
                 p.wait(timeout=5)
-            except (subprocess.SubprocessError,IndexError):
+            except (subprocess.SubprocessError,IndexError,OSError,ValueError):
                 p.terminate()
                 try: p.wait(timeout=5)
                 except subprocess.TimeoutExpired: p.kill();p.wait()

@@ -7,16 +7,6 @@ let args = Array(CommandLine.arguments.dropFirst())
 guard let action = args.first else { exit(2) }
 if action == "preflight" { exit(CGPreflightPostEventAccess() ? 0 : 77) }
 guard CGPreflightPostEventAccess() else { exit(77) }
-if action == "bounds", args.count == 2, let pid = Int(args[1]) {
-    let windows = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] ?? []
-    for window in windows where window[kCGWindowOwnerPID as String] as? Int == pid {
-        if let bounds = window[kCGWindowBounds as String] as? [String: Any], let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary), rect.width > 100 {
-            print("\(Int(rect.minX)) \(Int(rect.minY))")
-            exit(0)
-        }
-    }
-    exit(1)
-}
 if action == "escape" {
     CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: true)?.post(tap: .cghidEventTap)
     CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: false)?.post(tap: .cghidEventTap)

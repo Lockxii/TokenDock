@@ -37,7 +37,7 @@ sealed class NativeDragWindow:Window {
    }catch(Exception error){File.WriteAllText(Path.Combine(directory,"failure"),error.ToString());}
   });
   KeyDown+=(_,e)=>{if(e.Key==Key.Escape&&Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime app)app.Shutdown();};
-  Opened+=(_,_)=>File.WriteAllText(Path.Combine(directory,role+".ready"),"ready");
+  Opened+=(_,_)=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>{var origin=this.PointToScreen(new Point(0,0));File.WriteAllText(Path.Combine(directory,role+".ready"),$"{origin.X} {origin.Y}");},Avalonia.Threading.DispatcherPriority.Background);
   Closed+=(_,_)=>copies.Dispose();
   if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)lifetime.Exit+=(_,_)=>copies.Dispose();
  }

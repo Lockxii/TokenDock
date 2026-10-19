@@ -82,7 +82,9 @@ sealed class DockWindow:Window,IDisposable {
  }
  string Label(string id)=>id switch{"music"=>"Music","clipboard"=>"Clipboard","camera"=>"Camera","cat"=>"RAM",_=>prefs.Name(id)};
  PixelRect[]? fixtureAreas;double fixtureScale=1;Avalonia.Platform.Screen? selectedScreen;PixelRect? previousArea;
- double Scale=>fixture?fixtureScale:RenderScaling;
+ // macOS desktop coordinates are Cocoa points (Screen.Scaling == 1), even
+ // when RenderScaling is 2 on Retina. Do not mix render pixels with screen space.
+ double Scale=>fixture?fixtureScale:selectedScreen?.Scaling??Screens.ScreenFromPoint(anchor)?.Scaling??1;
  PixelRect WorkArea {
   get {
    if(fixtureAreas!=null)return DockPlacement.SelectArea(fixtureAreas,anchor);
