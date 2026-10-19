@@ -19,7 +19,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Linux native dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libfontconfig1 libice6 libsm6 playerctl python3-dbus-next
+        run: sudo apt-get update && sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libfontconfig1 libice6 libsm6 playerctl python3-dbus-next xvfb
       - name: Build desktop
         run: dotnet publish desktop -c Release --no-self-contained -o artifacts/desktop
       - name: Build native camera and verify synthetic transport
@@ -29,6 +29,16 @@ jobs:
       - name: Linux music integration (isolated D-Bus fixture)
         if: runner.os == 'Linux'
         run: dbus-run-session -- /usr/bin/python3 desktop/native/mpris-fixture.py artifacts/desktop/TokenDock.dll
+      - name: Native X11 clipboard (isolated virtual display)
+        if: runner.os == 'Linux'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: xvfb-run -a dotnet artifacts/desktop/TokenDock.dll --native-clipboard-check
+      - name: Native macOS clipboard (disposable CI desktop)
+        if: runner.os == 'macOS'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: dotnet artifacts/desktop/TokenDock.dll --native-clipboard-check
       - name: Compile Apple Music adapter without launching the player
         if: runner.os == 'macOS'
         run: osacompile -o artifacts/music.scpt desktop/native/music-apple.applescript

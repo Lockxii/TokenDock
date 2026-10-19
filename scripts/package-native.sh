@@ -4,6 +4,13 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 runtime="${1:?Usage: package-native.sh linux-x64|linux-arm64|osx-x64|osx-arm64}"
 case "$runtime" in linux-x64|linux-arm64|osx-x64|osx-arm64) ;; *) exit 2;; esac
+host_os=linux
+[[ "$(uname -s)" == Darwin ]] && host_os=osx
+host_arch=x64
+[[ "$(uname -m)" == arm64 || "$(uname -m)" == aarch64 ]] && host_arch=arm64
+if [[ "$runtime" != "$host_os-$host_arch" ]]; then
+  echo "Build on a matching $runtime host so the native camera helper cannot have the wrong architecture." >&2; exit 2
+fi
 out="$root/artifacts/native-$runtime"
 if [[ -e "$out" ]]; then echo "Refusing to overwrite an existing package directory." >&2; exit 1; fi
 mkdir -p "$out"
