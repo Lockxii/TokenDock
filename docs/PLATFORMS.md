@@ -1,6 +1,6 @@
 # Linux and macOS: full-parity release gate
 
-**Not implemented or supported by the current Windows build.** This is a requirements inventory, not a compatibility announcement. No native port has been completed or validated.
+**No supported Linux/macOS application release yet.** Shared-core implementation has started in [portable/](../portable/README.md), with native SQLite and RAM adapters and cross-OS integration checks. The desktop port is not complete; these checks do not establish module parity.
 
 The owner requires full parity before publication. A token-only prototype, web mockup or compatibility-layer build does not qualify.
 

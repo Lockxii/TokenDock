@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Meter.cs" Link="Meter.cs" />
+    <Compile Include="../Sqlite.cs" Link="Sqlite.cs" />
+    <Compile Include="../MemoryInfo.cs" Link="MemoryInfo.cs" />
+    <Compile Include="../next/Personalization.cs" Link="Personalization.cs" />
+  </ItemGroup>
+</Project>

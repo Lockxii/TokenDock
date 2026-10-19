@@ -2,4 +2,5 @@
 <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows10.0.19041.0</TargetFramework><UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><Nullable>enable</Nullable><AssemblyName>TokenDock.Next</AssemblyName><ApplicationManifest>app.manifest</ApplicationManifest><ApplicationIcon>../assets/tokendock.ico</ApplicationIcon></PropertyGroup>
 <ItemGroup><Compile Include="../Meter.cs" Link="Meter.cs"/><Compile Include="../MemoryInfo.cs" Link="MemoryInfo.cs"/><Content Include="../assets/*.svg" Link="assets/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"/><Content Include="../assets/cat-run.png" Link="assets/cat-run.png" CopyToOutputDirectory="PreserveNewest"/><Content Include="../assets/tokendock.ico" Link="assets/tokendock.ico" CopyToOutputDirectory="PreserveNewest"/></ItemGroup>
 <ItemGroup><Content Include="../assets/module-*-v15.png" Link="assets/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"/></ItemGroup>
+<ItemGroup><Compile Include="../Sqlite.cs" Link="Sqlite.cs"/></ItemGroup>
 </Project>

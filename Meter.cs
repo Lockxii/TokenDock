@@ -24,8 +24,10 @@ class Tail { public long Offset; public List<byte> Pending=[]; public Usage Last
 sealed class Monitor : IDisposable {
  public readonly Meter[] Meters=[new("Codex"),new("Claude Code"),new("OpenCode")];
  readonly DateTime started=DateTime.UtcNow;
- readonly ConcurrentDictionary<string,int> dirty=new(StringComparer.OrdinalIgnoreCase);
- readonly Dictionary<string,Tail> tails=new(StringComparer.OrdinalIgnoreCase);
+ // Linux and case-sensitive APFS volumes can contain paths differing only by case.
+ static readonly StringComparer Paths=OperatingSystem.IsWindows()?StringComparer.OrdinalIgnoreCase:StringComparer.Ordinal;
+ readonly ConcurrentDictionary<string,int> dirty=new(Paths);
+ readonly Dictionary<string,Tail> tails=new(Paths);
  readonly Dictionary<string,Usage> claude=new(); readonly Dictionary<string,Usage> open=new();
  readonly List<FileSystemWatcher> watchers=[];
  readonly CancellationTokenSource stop=new(); readonly object gate=new();
@@ -99,18 +101,4 @@ sealed class Monitor : IDisposable {
   dbStamp=stamp;cursor=next;Status(2,"Connected · read-only SQLite");
  }
  public void Dispose(){stop.Cancel();foreach(var w in watchers)w.Dispose();}
-}
-sealed class Sqlite:IDisposable {
- IntPtr db;
- [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_open_v2([MarshalAs(UnmanagedType.LPUTF8Str)]string path,out IntPtr db,int flags,IntPtr vfs);
- [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_prepare_v2(IntPtr db,[MarshalAs(UnmanagedType.LPUTF8Str)]string sql,int n,out IntPtr stmt,IntPtr tail);
- [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_step(IntPtr s);
- [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_column_count(IntPtr s);
- [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern IntPtr sqlite3_column_text(IntPtr s,int i);
- [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_finalize(IntPtr s);
- [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_close(IntPtr d);
- [DllImport("winsqlite3",CallingConvention=CallingConvention.Cdecl)]static extern int sqlite3_busy_timeout(IntPtr d,int ms);
- public Sqlite(string path){if(sqlite3_open_v2(path,out db,1,IntPtr.Zero)!=0){Dispose();throw new IOException("Database unavailable");}sqlite3_busy_timeout(db,100);}
- public IEnumerable<string[]> Rows(string query){if(sqlite3_prepare_v2(db,query,-1,out var s,IntPtr.Zero)!=0)throw new IOException("Incompatible SQLite schema");try{int rc;while((rc=sqlite3_step(s))==100){var r=new string[sqlite3_column_count(s)];for(int i=0;i<r.Length;i++)r[i]=Marshal.PtrToStringUTF8(sqlite3_column_text(s,i))??"0";yield return r;}if(rc!=101)throw new IOException("SQLite busy");}finally{sqlite3_finalize(s);}}
- public void Dispose(){if(db!=IntPtr.Zero){sqlite3_close(db);db=IntPtr.Zero;}}
 }
