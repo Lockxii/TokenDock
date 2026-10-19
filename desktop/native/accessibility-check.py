@@ -1,0 +1,78 @@
+"""Read the real OS accessibility tree of our synthetic app only, on disposable CI."""
+import json, os, pathlib, subprocess, sys, tempfile, time
+if os.environ.get('CI') != 'true' or os.environ.get('TOKENDOCK_TEST_DISPLAY') != 'isolated':
+    raise SystemExit('Isolated CI required')
+root = pathlib.Path(__file__).resolve().parent
+mac = sys.platform == 'darwin'
+if mac:
+    probe = pathlib.Path('artifacts/accessibility-probe').resolve()
+    subprocess.run(['swiftc', str(root / 'AccessibilityProbe.swift'), '-o', str(probe), '-framework', 'ApplicationServices'], check=True)
+    result = subprocess.run([str(probe), '0', 'preflight'])
+    if result.returncode: raise SystemExit(result.returncode)
+else:
+    import dbus
+    bus = dbus.SessionBus()
+    status = dbus.Interface(bus.get_object('org.a11y.Bus', '/org/a11y/status'), 'org.freedesktop.DBus.Properties')
+    status.Set('org.a11y.Status', 'IsEnabled', dbus.Boolean(True))
+    import pyatspi
+
+def until(check, description):
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        value = check()
+        if value: return value
+        time.sleep(.15)
+    raise AssertionError(description)
+
+with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
+    directory = pathlib.Path(directory)
+    (directory / 'fixture.marker').write_text('synthetic')
+    (directory / 'module').write_text('all')
+    target = pathlib.Path(sys.argv[1]).resolve()
+    command = ['dotnet', str(target)] if target.suffix == '.dll' else [str(target)]
+    app = subprocess.Popen(command + ['--accessibility-fixture', str(directory)])
+    try:
+        def tree(press=False):
+            if mac:
+                result = subprocess.run([str(probe), str(app.pid), 'press-camera' if press else 'snapshot'], capture_output=True, text=True, timeout=15)
+                if result.returncode: return []
+                return json.loads(result.stdout)
+            desktop = pyatspi.Registry.getDesktop(0)
+            target = next((a for a in desktop if a.get_process_id() == app.pid), None)
+            if target is None: return []
+            nodes = []
+            def visit(node, depth=0):
+                if depth >= 32 or len(nodes) >= 2000: return
+                actions = []
+                try:
+                    action = node.queryAction()
+                    actions = [action.getName(i) for i in range(action.nActions)]
+                    if press and node.name == 'Camera': assert action.doAction(0)
+                except NotImplementedError: pass
+                nodes.append(dict(name=node.name, role=node.getRoleName(), actions=actions))
+                for child in node:
+                    if child: visit(child, depth+1)
+            visit(target)
+            return nodes
+        until(lambda: (directory/'ready').exists(), 'Fixture did not open')
+        until(lambda: any(n['name']=='Camera' and n['actions'] for n in tree()), 'Camera action absent from native accessibility tree')
+        tree(True)
+        until(lambda: any(n['name']=='Take photo' for n in tree()), 'Native accessibility action did not open Camera')
+        expectations = {'music':['Playback position','Previous track','Play or pause','Next track'], 'clipboard':['Clear','Remove item'], 'camera':['Take photo'], 'settings':['Apply','Cancel','Featured token counter source']}
+        for module, names in expectations.items():
+            (directory/'module.next').write_text(module)
+            (directory/'module.next').replace(directory/'module')
+            until(lambda: (directory/'ready').read_text()==module, f'{module} did not open')
+            nodes = until(lambda: (snapshot if all(any(n['name']==name for n in snapshot) for name in names) else None) if (snapshot:=tree()) else None, f'Missing accessible names in {module}: {names}')
+            for name in names:
+                node = next(n for n in nodes if n['name']==name)
+                assert node['role'], f'Missing role for {name}'
+            if module == 'music':
+                assert any(n['name']=='Playback position' and 'slider' in n['role'].lower() for n in nodes)
+        print('PASS: external native accessibility tree, names, roles and Camera activation; synthetic content only.')
+    finally:
+        (directory/'stop').write_text('stop')
+        try: app.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            app.kill(); app.wait(timeout=5)
+        if app.returncode != 0: raise AssertionError(f'Accessibility fixture exit: {app.returncode}')

@@ -8,6 +8,7 @@ using Avalonia.Threading;
 namespace TokenDock;
 
 static class Program {
+ internal static string? AccessibilityDirectory;
  internal static bool NativeClipboardCheck;internal static string[]? NativeDragArgs;
  [STAThread]public static int Main(string[] args){
   System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.GetCultureInfo("en-US");
@@ -19,6 +20,10 @@ static class Program {
    if(Environment.GetEnvironmentVariable("CI")!="true"||Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated"||args[1] is not("source" or "sink"))throw new InvalidOperationException("Native drag tests are CI-only.");
    NativeDragArgs=args;
   }
+  if(args.Length==2&&args[0]=="--accessibility-fixture"){
+   if(Environment.GetEnvironmentVariable("CI")!="true"||Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated")throw new InvalidOperationException("Accessibility fixtures are CI-only.");
+   AccessibilityDirectory=Path.GetFullPath(args[1]);
+  }
   NativeClipboardCheck=args.Contains("--native-clipboard-check");
   if(NativeClipboardCheck&&(Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated"||Environment.GetEnvironmentVariable("CI")!="true"))throw new InvalidOperationException("Native clipboard checks are CI-only.");
   return AppBuilder.Configure<DockApp>().UsePlatformDetect().StartWithClassicDesktopLifetime(args,ShutdownMode.OnExplicitShutdown);
@@ -28,7 +33,7 @@ sealed class DockApp:Application {
  public override void Initialize(){Name="TokenDock";RequestedThemeVariant=ThemeVariant.Dark;Styles.Add(new FluentTheme());}
  public override void OnFrameworkInitializationCompleted(){
   if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime dragApp&&Program.NativeDragArgs is {} dragArgs){dragApp.MainWindow=new NativeDragWindow(dragArgs[1],dragArgs[2]);base.OnFrameworkInitializationCompleted();return;}
-  if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop){var dock=new DockWindow(Program.NativeClipboardCheck);desktop.MainWindow=dock;desktop.Exit+=(_,_)=>dock.Dispose();if(Program.NativeClipboardCheck)dock.Opened+=(_,_)=>Dispatcher.UIThread.Post(async()=>{try{await NativeClipboardChecks.Run(dock).WaitAsync(TimeSpan.FromSeconds(15));desktop.Shutdown(0);}catch(Exception e){Console.Error.WriteLine(e);desktop.Shutdown(1);}},DispatcherPriority.Background);}
+  if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop){var dock=new DockWindow(Program.NativeClipboardCheck||Program.AccessibilityDirectory!=null);desktop.MainWindow=dock;desktop.Exit+=(_,_)=>dock.Dispose();if(Program.AccessibilityDirectory is {} directory)AccessibilityFixture.Start(dock,directory,desktop);if(Program.NativeClipboardCheck)dock.Opened+=(_,_)=>Dispatcher.UIThread.Post(async()=>{try{await NativeClipboardChecks.Run(dock).WaitAsync(TimeSpan.FromSeconds(15));desktop.Shutdown(0);}catch(Exception e){Console.Error.WriteLine(e);desktop.Shutdown(1);}},DispatcherPriority.Background);}
   base.OnFrameworkInitializationCompleted();
  }
 }

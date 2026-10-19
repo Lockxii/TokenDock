@@ -17,6 +17,12 @@ int main(int argc, char **argv) {
         uint8_t pixels[16] = {0,0,255,255,0,255,0,255,255,0,0,255,255,255,255,255};
         return packet(pixels, 2, 2, 8) ? 0 : 1;
     }
+    if (argc == 2 && strcmp(argv[1], "--self-test-denied") == 0) {
+        fprintf(stderr, "Camera access denied. Check your device permissions.\n"); return 1;
+    }
+    if (argc == 2 && strcmp(argv[1], "--self-test-unavailable") == 0) {
+        fprintf(stderr, "No camera is connected.\n"); return 1;
+    }
     if (argc != 2 || strcmp(argv[1], "--capture") != 0) return 2;
     gst_init(NULL, NULL);
     GError *error = NULL;

@@ -64,6 +64,13 @@ static class DesktopChecks {
   checks+=QualityChecks.Accessibility(dock);
   string helper=Camera.HelperPath;
   if(File.Exists(helper)){
+   foreach(var failure in new[]{"denied","unavailable"}){
+    using var failed=new Camera(true,helper,failure);failed.SetActive(true);
+    var deadline=System.Diagnostics.Stopwatch.StartNew();while(!failed.Stopped.IsCompleted&&deadline.ElapsedMilliseconds<5000){Dispatcher.UIThread.RunJobs();Thread.Sleep(5);}
+    Check(failed.Stopped.IsCompleted&&failed.Frame==null,"Denied/missing camera releases capture and leaves no frame");
+    Check(failed.Status.Contains(failure=="denied"?"denied":"No camera",StringComparison.OrdinalIgnoreCase),"Native permission/device error reaches the UI");
+    failed.SetActive(false);Check(failed.Frame==null,"Closing failed camera leaves no stale image");
+   }
    using var camera=new Camera(true,helper);int frames=0;camera.Changed+=()=>{if(camera.Frame!=null)frames++;};camera.SetActive(true);
    var watch=System.Diagnostics.Stopwatch.StartNew();while(!camera.Stopped.IsCompleted&&watch.ElapsedMilliseconds<5000){Dispatcher.UIThread.RunJobs();Thread.Sleep(5);}Check(camera.Stopped.IsCompleted&&frames>0,"Native synthetic camera reaches the UI");
    for(int i=0;i<12;i++){camera.SetActive(true);camera.SetActive(false);}watch.Restart();while(!camera.Stopped.IsCompleted&&watch.ElapsedMilliseconds<5000){Dispatcher.UIThread.RunJobs();Thread.Sleep(5);}Check(camera.Stopped.IsCompleted&&camera.Frame==null,"Rapid camera cancellation drains capture work");

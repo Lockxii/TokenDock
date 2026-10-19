@@ -13,12 +13,31 @@ func packet(_ width: Int, _ height: Int, _ pixels: Data) {
 if CommandLine.arguments.dropFirst().first == "--self-test" {
     packet(2, 2, Data([0,0,255,255,0,255,0,255,255,0,0,255,255,255,255,255])); exit(0)
 }
-guard CommandLine.arguments.count == 2, CommandLine.arguments[1] == "--capture" else { exit(2) }
-let permission = DispatchSemaphore(value: 0)
-var allowed = false
-AVCaptureDevice.requestAccess(for: .video) { value in allowed = value; permission.signal() }
-permission.wait()
-guard allowed else { fail("Camera access denied. Enable TokenDock in System Settings > Privacy & Security > Camera.") }
+func permissionError(_ status: AVAuthorizationStatus) -> String? {
+    switch status {
+    case .denied: return "Camera access denied. Enable TokenDock in System Settings > Privacy & Security > Camera."
+    case .restricted: return "Camera access is restricted by system policy. Contact your device administrator."
+    default: return nil
+    }
+}
+let mode = CommandLine.arguments.dropFirst().first
+if mode == "--self-test-denied" { fail(permissionError(.denied)!) }
+if mode == "--self-test-unavailable" { fail("No camera is connected.") }
+if mode == "--permission-status" {
+    let status = AVCaptureDevice.authorizationStatus(for: .video)
+    print([AVAuthorizationStatus.notDetermined: "not-determined", .authorized: "authorized", .denied: "denied", .restricted: "restricted"][status] ?? "unknown")
+    exit(0) // Read-only: never requests access, enumerates devices or creates a session.
+}
+guard CommandLine.arguments.count == 2, mode == "--capture" else { exit(2) }
+let status = AVCaptureDevice.authorizationStatus(for: .video)
+if let error = permissionError(status) { fail(error) }
+if status != .authorized {
+    let permission = DispatchSemaphore(value: 0)
+    var allowed = false
+    AVCaptureDevice.requestAccess(for: .video) { value in allowed = value; permission.signal() }
+    permission.wait()
+    guard allowed else { fail(permissionError(.denied)!) }
+}
 guard let device = AVCaptureDevice.default(for: .video) else { fail("No camera is connected.") }
 let session = AVCaptureSession()
 session.beginConfiguration()
@@ -55,6 +74,6 @@ let frames = Frames()
 output.setSampleBufferDelegate(frames, queue: DispatchQueue(label: "TokenDock.Camera"))
 guard session.canAddOutput(output) else { fail("Camera output is unavailable.") }
 session.addOutput(output); session.commitConfiguration()
-NotificationCenter.default.addObserver(forName: .AVCaptureSessionRuntimeError, object: session, queue: nil) { _ in fail("Camera disconnected or interrupted.") }
+NotificationCenter.default.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: nil) { _ in fail("Camera disconnected or interrupted.") }
 session.startRunning()
 RunLoop.main.run()

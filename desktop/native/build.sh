@@ -18,6 +18,7 @@ case "$(uname -s)" in
   helper="$bundle/Contents/MacOS/tokendock-camera"
   swiftc -swift-version 5 -target "$(uname -m)-apple-macosx15.0" -O "$root/desktop/native/Camera.swift" -o "$helper" -framework AVFoundation -framework CoreVideo
   codesign --force --sign - "$bundle"
+  "$helper" --permission-status
   ;;
  Linux)
   helper="$out/native/tokendock-camera"

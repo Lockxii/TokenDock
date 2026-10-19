@@ -24,12 +24,15 @@ sealed record CameraFrame(int Width,int Height,byte[] Pixels) {
 }
 sealed class Camera:IDisposable {
  CancellationTokenSource? session;Task? running;int generation;bool disposed;
- readonly string helper;readonly bool fixture;
+ readonly string helper;readonly bool fixture;readonly string fixtureArgument;
  public CameraFrame? Frame{get;private set;}public string Status{get;private set;}="Opening camera…";
  public event Action? Changed;
  internal void SetFixture(CameraFrame frame){if(!fixture)throw new InvalidOperationException("Fixture capture only.");Frame=frame;Status="Synthetic preview";}
  internal static string HelperPath=>AppFiles.Camera;
- public Camera(bool fixture=false,string? helper=null){this.fixture=fixture;this.helper=helper??HelperPath;}
+ public Camera(bool fixture=false,string? helper=null,string? errorFixture=null){
+  if(errorFixture!=null&&(!fixture||errorFixture is not("denied" or "unavailable")))throw new ArgumentException("Synthetic errors require fixture mode.");
+  this.fixture=fixture;this.helper=helper??HelperPath;fixtureArgument=errorFixture==null?"--self-test":"--self-test-"+errorFixture;
+ }
  public void SetActive(bool active){
   if(disposed||active==(session!=null))return;
   generation++;session?.Cancel();session=null;Frame=null;
@@ -43,7 +46,7 @@ sealed class Camera:IDisposable {
    if(previous!=null)await previous;
    cancel.Token.ThrowIfCancellationRequested();
    if(!File.Exists(helper))throw new IOException("Camera adapter is missing from this build.");
-   var start=new ProcessStartInfo(helper){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};start.ArgumentList.Add(fixture?"--self-test":"--capture");
+   var start=new ProcessStartInfo(helper){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};start.ArgumentList.Add(fixture?fixtureArgument:"--capture");
    using var process=new Process{StartInfo=start};if(!process.Start())throw new IOException("Camera could not start.");
    using var registration=cancel.Token.Register(()=>Terminate(process));
    var errors=ReadError(process.StandardError,cancel.Token);
