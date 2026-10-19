@@ -1,0 +1,23 @@
+name: Windows checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish
+        run: dotnet publish next/TokenDock.Next.csproj -c Release -o artifacts/check --no-self-contained
+      - name: Offscreen checks
+        run: dotnet artifacts/check/TokenDock.Next.dll --check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-report
+          path: artifacts/check/checks.txt
