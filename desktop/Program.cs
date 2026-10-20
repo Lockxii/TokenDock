@@ -35,7 +35,12 @@ static class Program {
  }
 }
 sealed class DockApp:Application {
- public override void Initialize(){Name="TokenDock";RequestedThemeVariant=ThemeVariant.Dark;Styles.Add(new FluentTheme());}
+ public override void Initialize(){Name="TokenDock";RequestedThemeVariant=ThemeVariant.Dark;Styles.Add(new FluentTheme());
+  // Layout implementation names are not useful spoken context. Preserve the
+  // descendants and their roles/names; suppress only fallback class labels.
+  foreach(var type in new[]{typeof(Panel),typeof(Decorator)})Styles.Add(new Style(x=>x.Is(type)){Setters={new Setter(Avalonia.Automation.AutomationProperties.ClassNameOverrideProperty,"")}});
+  foreach(var type in new[]{typeof(ContentControl),typeof(Avalonia.Controls.Presenters.ContentPresenter),typeof(Avalonia.Controls.Presenters.ScrollContentPresenter)})Styles.Add(new Style(x=>x.OfType(type)){Setters={new Setter(Avalonia.Automation.AutomationProperties.ClassNameOverrideProperty,"")}});
+ }
  public override void OnFrameworkInitializationCompleted(){
   if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime dragApp&&Program.NativeDragArgs is {} dragArgs){dragApp.MainWindow=new NativeDragWindow(dragArgs[1],dragArgs[2]);base.OnFrameworkInitializationCompleted();return;}
   if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop){var dock=new DockWindow(Program.NativeClipboardCheck||Program.AccessibilityDirectory!=null);desktop.MainWindow=dock;desktop.Exit+=(_,_)=>dock.Dispose();if(Program.AccessibilityDirectory is {} directory)AccessibilityFixture.Start(dock,directory,desktop);if(Program.NativeClipboardCheck)dock.Opened+=(_,_)=>Dispatcher.UIThread.Post(async()=>{try{await NativeClipboardChecks.Run(dock).WaitAsync(TimeSpan.FromSeconds(15));desktop.Shutdown(0);}catch(Exception e){Console.Error.WriteLine(e);desktop.Shutdown(1);}},DispatcherPriority.Background);}

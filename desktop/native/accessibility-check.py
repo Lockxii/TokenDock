@@ -87,7 +87,9 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
             def announced():
                 with path.open(errors='replace') as stream:
                     stream.seek(before)
-                    return any('SPEECH OUTPUT:' in line and name in line for line in stream)
+                    lines = [line for line in stream if 'SPEECH OUTPUT:' in line]
+                    assert not any(label in line for line in lines for label in ['Canvas panel', 'Border panel', 'StackPanel panel', 'ScrollContentPresenter panel']), 'Decorative layout names leaked into Orca speech'
+                    return any(name in line for line in lines)
             until(announced, f'Orca did not announce {name}')
             print(f'PASS: Orca generated speech for {name}', flush=True)
         until(lambda: (directory/'ready').exists(), 'Fixture did not open')
