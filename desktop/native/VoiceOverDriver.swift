@@ -9,10 +9,18 @@ guard ProcessInfo.processInfo.environment["CI"] == "true",
 guard AXIsProcessTrusted(), CGPreflightPostEventAccess() else { print("UNVERIFIED: existing AX/event permission unavailable"); exit(77) }
 func pause(_ seconds: Double) { RunLoop.current.run(until: Date().addingTimeInterval(seconds)) }
 func key(_ code: Int, _ flags: CGEventFlags) {
-    for down in [true, false] {
-        let event = CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(code), keyDown: down)!
-        event.flags = flags; event.post(tap: .cghidEventTap); pause(0.05)
+    let modifiers: [(Int, CGEventFlags)] = [(kVK_Control,.maskControl),(kVK_Option,.maskAlternate),(kVK_Shift,.maskShift),(kVK_Command,.maskCommand),(kVK_Function,.maskSecondaryFn)]
+    func post(_ keyCode: Int, _ down: Bool, _ state: CGEventFlags, _ modifier: Bool = false) {
+        let event = CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(keyCode), keyDown: down)!
+        if modifier { event.type = .flagsChanged }
+        event.flags = state; event.post(tap: .cghidEventTap); pause(0.04)
     }
+    var state: CGEventFlags = []
+    for (modifier,flag) in modifiers where flags.contains(flag) { state.insert(flag); post(modifier,true,state,true) }
+    post(code,true,state); post(code,false,state)
+    // Modifier release must be a real flagsChanged event. A key-up that retains
+    // Command can otherwise contaminate subsequent pointer/drag tests.
+    for (modifier,flag) in modifiers.reversed() where flags.contains(flag) { state.remove(flag); post(modifier,false,state,true) }
 }
 func welcomeAction(_ title: String) -> Bool {
     for process in NSWorkspace.shared.runningApplications where (process.bundleIdentifier ?? "").lowercased().contains("voiceover") {
@@ -51,6 +59,8 @@ case "start":
         if welcomeAction("Use VoiceOver") { print("Accepted the standard VoiceOver welcome dialog"); pause(0.5) }
         if enabled() { exit(0) }; pause(0.1)
     }
+    print("VoiceOver processes:", NSWorkspace.shared.runningApplications.filter { ($0.bundleIdentifier ?? "").lowercased().contains("voiceover") }.map { $0.bundleIdentifier ?? "" })
+    print("Modifier flags after shortcut:", CGEventSource.flagsState(.combinedSessionState).rawValue)
     print("UNVERIFIED: runner did not enable VoiceOver through its standard shortcut"); exit(77)
 case "stop":
     _ = welcomeAction("Turn Off VoiceOver")
