@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-orca-') as temporary:
         subprocess.run(['pactl','load-module','module-null-sink','sink_name=tokendock_fixture'],env=env,check=True,stdout=subprocess.DEVNULL)
         subprocess.run(['pactl','set-default-sink','tokendock_fixture'],env=env,check=True)
         with open(pathlib.Path(temporary)/'process.log','w') as output:
-            orca = subprocess.Popen(['orca','--replace','--debug','--debug-file='+env['TOKENDOCK_ORCA_LOG']],env=env,stdout=output,stderr=output)
+            orca = subprocess.Popen(['/usr/bin/python3',str(pathlib.Path(__file__).with_name('orca-runner.py')),'--replace','--debug','--debug-file='+env['TOKENDOCK_ORCA_LOG']],env=env,stdout=output,stderr=output)
             time.sleep(3)
             if orca.poll() is not None: raise RuntimeError('Orca did not remain running')
             subprocess.run(['/usr/bin/python3',str(pathlib.Path(__file__).with_name('accessibility-check.py')),sys.argv[1]],env=env,check=True,timeout=150)
