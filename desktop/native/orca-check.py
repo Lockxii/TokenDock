@@ -20,7 +20,8 @@ with tempfile.TemporaryDirectory(prefix='tokendock-orca-') as temporary:
             path=pathlib.Path(temporary)/name
             if path.exists():
                 lines=path.read_text(errors='replace').splitlines()
-                print(name, '\n'.join(lines[-40:]))
+                selected = [line for line in lines if any(word in line for word in ['SPEECH OUTPUT:', 'Clear', 'ERROR', 'Traceback'])]
+                print(name, '\n'.join(selected[-60:] or lines[-40:]))
         raise
     finally:
         if orca is not None:
