@@ -20,7 +20,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Linux native dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libfontconfig1 libice6 libsm6 playerctl python3-dbus-next xvfb xdotool desktop-file-utils at-spi2-core python3-pyatspi python3-dbus
+        run: sudo apt-get update && sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libfontconfig1 libice6 libsm6 playerctl python3-dbus-next xvfb xdotool desktop-file-utils at-spi2-core python3-pyatspi python3-dbus orca speech-dispatcher espeak-ng pulseaudio
       - name: Build desktop
         run: dotnet publish desktop -c Release --no-self-contained -o artifacts/desktop
       - name: Build native camera and verify synthetic transport
@@ -42,6 +42,11 @@ jobs:
         env:
           TOKENDOCK_TEST_DISPLAY: isolated
         run: dbus-run-session -- xvfb-run -a /usr/bin/python3 desktop/native/accessibility-check.py artifacts/desktop/TokenDock.dll
+      - name: Orca generated speech (isolated session, null audio sink)
+        if: runner.os == 'Linux'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: dbus-run-session -- xvfb-run -a /usr/bin/python3 desktop/native/orca-check.py artifacts/desktop/TokenDock.dll
       - name: Native macOS accessibility when permission is available
         if: runner.os == 'macOS'
         env:

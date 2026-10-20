@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
     command = ['dotnet', str(target)] if target.suffix == '.dll' else [str(target)]
     app = subprocess.Popen(command + ['--accessibility-fixture', str(directory)])
     try:
-        def tree(press=False):
+        def tree(press=False, focus=None):
             global last_snapshot
             if mac:
                 result = subprocess.run([str(probe), str(app.pid), 'press-camera' if press else 'snapshot'], capture_output=True, text=True, timeout=15)
@@ -49,6 +49,8 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
             nodes = []
             def visit(node, depth=0):
                 if depth >= 32 or len(nodes) >= 2000: return
+                if focus and node.name == focus:
+                    assert node.queryComponent().grabFocus(), "Native focus request refused"
                 actions = []
                 try:
                     action = node.queryAction()
@@ -67,7 +69,24 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
                 return []
             last_snapshot = nodes
             return nodes
+        def spoken(name):
+            log = os.environ.get('TOKENDOCK_ORCA_LOG')
+            if not log: return
+            path = pathlib.Path(log)
+            before = path.stat().st_size if path.exists() else 0
+            tree(focus=name)
+            def announced():
+                with path.open(errors='replace') as stream:
+                    stream.seek(before)
+                    return any('SPEECH OUTPUT:' in line and name in line for line in stream)
+            until(announced, f'Orca did not announce {name}')
+            print(f'PASS: Orca generated speech for {name}', flush=True)
         until(lambda: (directory/'ready').exists(), 'Fixture did not open')
+        if os.environ.get('TOKENDOCK_ORCA_LOG'):
+            windows = subprocess.check_output(['xdotool','search','--onlyvisible','--pid',str(app.pid)], text=True).splitlines()
+            assert windows, 'Synthetic dock window absent'
+            subprocess.run(['xdotool','windowfocus','--sync',windows[0]], check=True)
+            spoken('Camera')
         until(lambda: any(n['name']=='Camera' for n in tree()), 'Camera action absent from native accessibility tree')
         initial = tree()
         camera = next(n for n in initial if n['name']=='Camera')
@@ -85,6 +104,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
             for name in names:
                 node = next(n for n in nodes if n['name']==name)
                 assert node['role'], f'Missing role for {name}'
+            spoken(names[0])
             if module == 'music':
                 assert any(n['name']=='Playback position' and 'slider' in n['role'].lower() for n in nodes)
         print('PASS: external native accessibility tree, names, roles and Camera activation; synthetic content only.')
