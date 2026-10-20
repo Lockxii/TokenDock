@@ -1,0 +1,90 @@
+name: macOS signing rehearsal
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: 'Exact reviewed main commit (40-character SHA); no publication'
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: macos-signing
+  cancel-in-progress: false
+jobs:
+  sign:
+    if: github.ref == 'refs/heads/main' && vars.MACOS_SIGNING_ENABLED == 'true'
+    environment: macos-signing
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            runtime: osx-arm64
+          - os: macos-15-intel
+            runtime: osx-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Require reviewed commit and successful native CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEWED_SHA: ${{ inputs.revision }}
+        run: |
+          [[ "$REVIEWED_SHA" =~ ^[0-9a-f]{40}$ && "$REVIEWED_SHA" == "$GITHUB_SHA" ]] || exit 2
+          gh api "repos/$GITHUB_REPOSITORY/environments/macos-signing" > "$RUNNER_TEMP/signing-environment.json"
+          python3 - "$RUNNER_TEMP/signing-environment.json" <<'PY'
+          import json, sys
+          env = json.load(open(sys.argv[1]))
+          assert any(r.get('type') == 'required_reviewers' and r.get('prevent_self_review') and r.get('reviewers') for r in env.get('protection_rules', [])), 'Independent environment approval required'
+          assert (env.get('deployment_branch_policy') or {}).get('custom_branch_policies'), 'Custom main-only environment policy required'
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/environments/macos-signing/deployment-branch-policies" > "$RUNNER_TEMP/signing-branches.json"
+          python3 - "$RUNNER_TEMP/signing-branches.json" <<'PY'
+          import json, sys
+          rules = json.load(open(sys.argv[1]))['branch_policies']
+          assert len(rules) == 1 and rules[0]['name'] == 'main' and rules[0].get('type', 'branch') == 'branch', 'Only main may sign'
+          PY
+          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/portable.yml/runs?head_sha=$GITHUB_SHA&event=push&status=success" --jq '.total_count')
+          [[ "$count" -gt 0 ]] || { echo 'Successful native CI for this exact main commit is required.' >&2; exit 2; }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build and check without signing secrets
+        run: |
+          dotnet publish desktop -c Release --no-self-contained -o artifacts/desktop
+          bash desktop/native/build.sh artifacts/desktop
+          dotnet artifacts/desktop/TokenDock.dll --check artifacts/signing-checks
+      - name: Prepare temporary signing keychain
+        env:
+          MACOS_APP_IDENTITY: ${{ vars.MACOS_APP_IDENTITY }}
+          MACOS_INSTALLER_IDENTITY: ${{ vars.MACOS_INSTALLER_IDENTITY }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          MACOS_APP_P12_BASE64: ${{ secrets.MACOS_APP_P12_BASE64 }}
+          MACOS_APP_P12_PASSWORD: ${{ secrets.MACOS_APP_P12_PASSWORD }}
+          MACOS_INSTALLER_P12_BASE64: ${{ secrets.MACOS_INSTALLER_P12_BASE64 }}
+          MACOS_INSTALLER_P12_PASSWORD: ${{ secrets.MACOS_INSTALLER_P12_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: python3 scripts/macos-signing-keychain.py prepare
+      - name: Sign, notarize and verify (no release or binary upload)
+        env:
+          MACOS_APP_IDENTITY: ${{ vars.MACOS_APP_IDENTITY }}
+          MACOS_INSTALLER_IDENTITY: ${{ vars.MACOS_INSTALLER_IDENTITY }}
+          MACOS_NOTARY_PROFILE: TokenDock-CI
+          MACOS_NOTARY_KEYCHAIN: ${{ runner.temp }}/tokendock-signing/signing.keychain-db
+          TARGET_RUNTIME: ${{ matrix.runtime }}
+        run: |
+          bash scripts/package-native.sh "$TARGET_RUNTIME"
+          echo 'Signed and notarized rehearsal only. Full parity remains required before publication.' >> "$GITHUB_STEP_SUMMARY"
+          shasum -a 256 "artifacts/native-$TARGET_RUNTIME/TokenDock-$TARGET_RUNTIME.dmg" "artifacts/native-$TARGET_RUNTIME/TokenDock-$TARGET_RUNTIME.pkg" >> "$GITHUB_STEP_SUMMARY"
+      - name: Always remove keys and restore keychain search list
+        if: always()
+        run: python3 scripts/macos-signing-keychain.py cleanup

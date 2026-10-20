@@ -18,7 +18,9 @@ case "$artifact" in
   *.dmg) codesign --verify --strict "$artifact" ;;
   *) echo 'Expected .app, .pkg or .dmg' >&2; exit 2 ;;
 esac
-xcrun notarytool submit "$upload" --keychain-profile "$profile" --wait --timeout 30m --output-format json > "$scratch/result.json"
+credentials=(--keychain-profile "$profile")
+[[ -z "${MACOS_NOTARY_KEYCHAIN:-}" ]] || credentials+=(--keychain "$MACOS_NOTARY_KEYCHAIN")
+xcrun notarytool submit "$upload" "${credentials[@]}" --wait --timeout 30m --output-format json > "$scratch/result.json"
 python3 - "$scratch/result.json" <<'PY'
 import json,sys
 result=json.load(open(sys.argv[1]))

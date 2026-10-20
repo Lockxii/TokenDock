@@ -38,7 +38,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
         def tree(press=False, focus=None):
             global last_snapshot
             if mac:
-                result = subprocess.run([str(probe), str(app.pid), 'press-camera' if press else 'snapshot'], capture_output=True, text=True, timeout=15)
+                result = subprocess.run([str(probe), str(app.pid), 'focus:'+focus if focus else 'press-camera' if press else 'snapshot'], capture_output=True, text=True, timeout=15)
                 if press: print(result.stderr, flush=True)
                 if result.returncode: return []
                 last_snapshot = json.loads(result.stdout)
@@ -70,6 +70,15 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
             last_snapshot = nodes
             return nodes
         def spoken(name):
+            voiceover = os.environ.get('TOKENDOCK_VOICEOVER_DRIVER')
+            if voiceover:
+                tree(focus=name)
+                def announced_by_voiceover():
+                    result = subprocess.run([voiceover,'read-focused'],capture_output=True,text=True,timeout=8)
+                    return result.returncode == 0 and name in result.stdout
+                until(announced_by_voiceover, f'VoiceOver did not announce {name}')
+                print(f'PASS: VoiceOver actual last phrase contains {name}', flush=True)
+                return
             log = os.environ.get('TOKENDOCK_ORCA_LOG')
             if not log: return
             path = pathlib.Path(log)
@@ -87,6 +96,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
             assert windows, 'Synthetic dock window absent'
             subprocess.run(['xdotool','windowfocus','--sync',windows[0]], check=True)
             spoken('Camera')
+        if os.environ.get('TOKENDOCK_VOICEOVER_DRIVER'): spoken('Camera')
         until(lambda: any(n['name']=='Camera' for n in tree()), 'Camera action absent from native accessibility tree')
         initial = tree()
         camera = next(n for n in initial if n['name']=='Camera')

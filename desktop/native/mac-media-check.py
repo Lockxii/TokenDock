@@ -16,6 +16,11 @@ target = pathlib.Path(sys.argv[1]).resolve()
 command = ["dotnet", str(target)] if target.suffix == ".dll" else [str(target)]
 process = subprocess.Popen([str(binary)])
 try:
+    probe = pathlib.Path('artifacts/permissions-probe').resolve()
+    subprocess.run(['swiftc', str(root/'PermissionsProbe.swift'), '-o', str(probe), '-framework', 'AppKit', '-framework', 'AVFoundation', '-framework', 'Carbon'], check=True)
+    snapshot = subprocess.check_output([str(probe), str(process.pid)], text=True, timeout=10)
+    pathlib.Path('artifacts/permissions.json').write_text(snapshot)
+    print('Native permission snapshot (no prompts):', snapshot)
     subprocess.run(command + ['--media-check'], check=True, timeout=90)
 finally:
     process.terminate()

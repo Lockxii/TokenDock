@@ -11,6 +11,11 @@ static class Program {
  internal static string? AccessibilityDirectory;
  internal static bool NativeClipboardCheck;internal static string[]? NativeDragArgs;
  [STAThread]public static int Main(string[] args){
+  if(args.Length==2&&args[0]=="--denied-shelf-check"){
+   if(Environment.GetEnvironmentVariable("CI")!="true"||Environment.GetEnvironmentVariable("TOKENDOCK_TEST_DISPLAY")!="isolated"||Path.GetFileName(args[1])!="denied.txt"||!File.Exists(Path.Combine(Path.GetDirectoryName(args[1])!,"fixture.marker")))throw new InvalidOperationException("Isolated synthetic permission fixture required.");
+   if(!File.Exists(args[1]))throw new InvalidOperationException("Fixture metadata must be readable.");
+   using var shelf=new FileShelf();try{Task.Run(()=>shelf.Store([args[1]])).GetAwaiter().GetResult();throw new InvalidOperationException("OS sandbox failed to deny the import.");}catch(Exception e)when(e is IOException or UnauthorizedAccessException){Console.WriteLine("PASS: real OS sandbox denial reaches file shelf without importing data.");return 0;}
+  }
   System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.GetCultureInfo("en-US");
   if(args.Contains("--perf-check")||args.Contains("--check")||args.Contains("--media-check")||args.Contains("--media-empty-check")){
    AppBuilder.Configure<DockApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions{UseHeadlessDrawing=false}).SetupWithoutStarting();

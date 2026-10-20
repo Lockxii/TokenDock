@@ -1,5 +1,6 @@
 import ApplicationServices
 import Foundation
+import AppKit
 
 guard ProcessInfo.processInfo.environment["CI"] == "true",
       ProcessInfo.processInfo.environment["TOKENDOCK_TEST_DISPLAY"] == "isolated" else { exit(2) }
@@ -26,6 +27,10 @@ func visit(_ element: AXUIElement, _ depth: Int) {
     let actionStatus = AXUIElementCopyActionNames(element, &names)
     let actions = names as? [String] ?? []
     nodes.append(["name": name, "role": role, "actions": actions, "actionStatus": actionStatus.rawValue])
+    if action == "focus:" + name {
+        NSRunningApplication(processIdentifier: pid)?.activate(options: [.activateIgnoringOtherApps])
+        if AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue) != .success { exit(4) }
+    }
     if action == "press-camera" && name == "Camera" && !pressed {
         let result = AXUIElementPerformAction(element, kAXPressAction as CFString)
         FileHandle.standardError.write(Data("Camera AXPress result: \(result.rawValue)\n".utf8))

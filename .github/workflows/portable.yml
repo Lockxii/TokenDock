@@ -37,6 +37,11 @@ jobs:
         env:
           TOKENDOCK_TEST_DISPLAY: isolated
         run: python3 desktop/native/mac-media-check.py artifacts/desktop/TokenDock.dll
+      - name: Real macOS sandbox denial (synthetic file only)
+        if: runner.os == 'macOS'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: python3 desktop/native/sandbox-permission-check.py artifacts/desktop/TokenDock.dll
       - name: Native Linux accessibility (AT-SPI, isolated session)
         if: runner.os == 'Linux'
         env:
@@ -56,6 +61,19 @@ jobs:
             result=$?
             if [ "$result" = 77 ]; then
               echo '::warning::Native macOS accessibility remains unverified: runner denies AX client permission.'
+            else
+              exit "$result"
+            fi
+          }
+      - name: VoiceOver real last phrase when existing permission allows it
+        if: runner.os == 'macOS'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: |
+          python3 desktop/native/voiceover-check.py artifacts/desktop/TokenDock.dll || {
+            result=$?
+            if [ "$result" = 77 ]; then
+              echo '::warning::VoiceOver speech remains UNVERIFIED on this runner.'
             else
               exit "$result"
             fi
@@ -104,6 +122,7 @@ jobs:
           path: |
             artifacts/desktop-renders/*.png
             artifacts/performance.json
+            artifacts/permissions.json
   core:
     strategy:
       fail-fast: false
@@ -118,6 +137,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Signing cleanup and credential handling (no credentials)
+        run: python scripts/check-signing-keychain.py
       - name: Create synthetic SQLite input
         run: python portable/create_fixture.py artifacts/fixture.db
       - name: Check real OS adapters and shared logic
