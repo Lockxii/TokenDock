@@ -69,3 +69,13 @@ Camera error fixtures return denial and device-unavailable failures through the 
 The external macOS probe exposed missing action advertisement in Avalonia 12.1.4 even though AXPress could activate the button. The pinned native backend patch in `desktop/native/avalonia` explicitly advertises supported actions. CI requires AXPress on Camera and checks the installed hardened-runtime bundle as well as the framework-dependent build. The Linux probe retries only stale-object errors during panel replacement; persistent errors still fail.
 
 The AppleScript music fallback preserves automation-denied error `-1743` and shows the Automation settings path instead of claiming no player exists. A synthetic `osascript` error verifies this process/error boundary without sending Apple Events or opening a player. Actual first-use consent and revocation remain separate validation gates.
+
+## Reader output and real permission boundaries
+
+The Linux CI reader test runs the installed Orca in an isolated D-Bus/Xvfb session with a null audio sink. It checks Orca's own `SPEECH OUTPUT` diagnostics after native focus changes; a small harness flushes the diagnostic stream without changing speech generation. This tests generated announcements, not perceived audio quality or a complete human navigation audit.
+
+The macOS reader harness uses the documented Command-F5, VO-Fn-F4 and VO-Shift-C shortcuts to enable VoiceOver, describe keyboard focus and copy its actual last phrase. It requires existing AX/event permission, preserves an already-enabled reader by declining the test, and disables the reader it started in cleanup. Missing permission or inability to enable the reader is explicitly UNVERIFIED, never proof of compatibility. No TCC database or scripting-permission preference is modified. The copied data belongs to the disposable CI session.
+
+A read-only macOS probe reports actual camera, AX and Apple Events authorization for the synthetic player without requesting consent, sending an Apple event or opening a device. A separate OS sandbox rule denies reading one synthetic file while the real file shelf tries importing it, and verifies the original remains intact. That proves an OS-enforced file-access denial, not camera/Automation TCC prompt or revocation behavior. The permission snapshot is retained as CI evidence. Physical camera access, first-use consent, revocation and full VoiceOver/Orca usability remain release gates.
+
+References: [Orca diagnostic options](https://teams.pages.gitlab.gnome.org/websites/help.gnome.org/orca/introduction.html), [VoiceOver orientation commands](https://support.apple.com/en-ca/guide/voiceover/cpvokys03/10/mac/27), [VoiceOver last phrase](https://support.apple.com/en-ca/guide/voiceover/vo2725/mac).

@@ -43,6 +43,17 @@ class Tests(unittest.TestCase):
         with patch.object(m.subprocess,'run',return_value=type('Result',(),{'returncode':1,'stdout':'','stderr':'synthetic-secret'})()):
             with self.assertRaises(RuntimeError) as result:m.command(['security','synthetic-secret'],'Import')
         self.assertNotIn('synthetic-secret',str(result.exception))
+    def test_api_auth_removes_private_export(self):
+        os.environ.update(APPLE_API_KEY_P8_BASE64=base64.b64encode(b'fixture-key').decode(),APPLE_API_KEY_ID='fixture',APPLE_API_ISSUER_ID='fixture')
+        with patch.object(m,'command',self.fake):
+            m.prepare();self.assertFalse((m.location()/'notary.p8').exists());m.cleanup()
+        stored=next(args for args,label in self.calls if label=='Validate and store notarization credentials')
+        self.assertIn('--key',stored);self.assertNotIn('--password',stored)
+    def test_invalid_export_cleans_created_keychain(self):
+        os.environ['MACOS_APP_P12_BASE64']='!invalid!'
+        with patch.object(m,'command',self.fake):
+            with self.assertRaises(RuntimeError):m.prepare()
+        self.assertFalse(m.location().exists())
     def test_unowned_directory_preserved(self):
         m.location().mkdir()
         with self.assertRaises(RuntimeError):m.cleanup()

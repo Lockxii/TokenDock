@@ -37,6 +37,11 @@ jobs:
         env:
           TOKENDOCK_TEST_DISPLAY: isolated
         run: python3 desktop/native/mac-media-check.py artifacts/desktop/TokenDock.dll
+      - name: Actual temporary-keychain lifecycle (no certificates)
+        if: runner.os == 'macOS'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: python3 scripts/check-macos-keychain-lifecycle.py
       - name: Real macOS sandbox denial (synthetic file only)
         if: runner.os == 'macOS'
         env:

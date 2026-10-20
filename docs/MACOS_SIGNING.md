@@ -18,7 +18,7 @@ export MACOS_NOTARY_PROFILE='TokenDock'
 bash scripts/package-native.sh osx-arm64 # or osx-x64 on Intel
 ```
 
-The output directory must not already exist. This is an explicit Apple submission, not a public release. Do not run it for unreviewed code. For CI credentials, use a protected GitHub environment, restricted trusted refs, a temporary keychain and cleanup in an always-run step; never expose signing secrets to pull-request code. No secret-bearing workflow is enabled yet.
+The output directory must not already exist. This is an explicit Apple submission, not a public release. Do not run it for unreviewed code. For CI credentials, use a protected GitHub environment, restricted trusted refs, a temporary keychain and cleanup in an always-run step; never expose signing secrets to pull-request code. The manual signing rehearsal workflow is gated off until explicitly configured; normal CI never receives signing secrets.
 
 ## What the scripts do
 
@@ -52,8 +52,21 @@ Prepare these items **in a protected secret store, never in chat or Git**:
 | Notarization authentication | The Apple ID associated with the team and an **app-specific password**, not its normal sign-in password. Alternatively, a team App Store Connect API `.p8` private key, Key ID and Issuer ID with the required access. Use one authentication method. |
 | Identity names | Exact `Developer ID Application: … (TEAMID)` and `Developer ID Installer: … (TEAMID)` names. These names and Team ID can be shared as non-secret configuration. |
 
-For a future signing workflow, create a protected GitHub environment named `macos-signing`, restrict it to the reviewed signing ref, and require a maintainer review. Suggested secret names are `MACOS_APP_P12_BASE64`, `MACOS_APP_P12_PASSWORD`, `MACOS_INSTALLER_P12_BASE64`, `MACOS_INSTALLER_P12_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_SPECIFIC_PASSWORD`. Base64 only transports the encrypted export; it is not encryption. These names are a handoff convention, **not an enabled secret-consuming workflow**. The credential-free validation workflow never reads these secrets.
+## Protected manual rehearsal workflow
 
-Once configured, a reviewed manual signing job must import the certificates into a temporary keychain, grant codesign access only to the imported signing keys, create the `MACOS_NOTARY_PROFILE` there, invoke the existing package/sign/notarize scripts, and delete the keychain and decrypted exports in an always-run cleanup. Signing must never run on fork/PR code. Do not publish while the remaining parity gates are open, even if notarization is accepted.
+`.github/workflows/macos-signing.yml` is manual-only. It signs and notarizes development containers; it never creates a release or uploads binaries. It is deliberately disabled unless the **repository variable** `MACOS_SIGNING_ENABLED` is `true`. No certificates or notarization credentials are currently configured.
 
-No certificate material or private keys are currently configured in this repository. No notarization request has been submitted.
+Before enabling it:
+
+1. Merge and review the intended code on `main`, then require a successful `Native port integration` **push** run for that exact commit. The dispatch input must equal the selected main commit SHA; arbitrary source refs are rejected.
+2. Create the GitHub environment `macos-signing`. Configure required reviewers, prevent self-review, and a single deployment branch policy of type branch named exactly `main`. The workflow checks these settings through GitHub's API and fails closed if they cannot be verified. This requires a trusted reviewer other than the dispatching user.
+3. Add environment variables `MACOS_APP_IDENTITY`, `MACOS_INSTALLER_IDENTITY`, and `APPLE_TEAM_ID` with the exact certificate identity names and team.
+4. Add encrypted environment secrets `MACOS_APP_P12_BASE64`, `MACOS_APP_P12_PASSWORD`, `MACOS_INSTALLER_P12_BASE64`, `MACOS_INSTALLER_P12_PASSWORD`. Base64 is transport encoding, not encryption; keep the exports password-protected.
+5. For notarization, add either `APPLE_ID` and `APPLE_APP_SPECIFIC_PASSWORD`, or `APPLE_API_KEY_P8_BASE64`, `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER_ID`. If the API key is present, that method is selected. Do not configure both methods unnecessarily.
+6. Set the repository enable variable only after the environment restrictions and secrets are in place. Dispatch from `main` with its reviewed 40-character commit SHA.
+
+The workflow uses pinned official actions and a read-only GitHub token. A build/check step runs without signing secrets. Credentials are supplied only to the keychain preparation step; they are never printed. The preparation script imports keys into a temporary keychain, validates the requested identities, stores a notarytool profile there, and removes decrypted exports. Notarization uses that explicit keychain. An always-run cleanup restores the original keychain search list and deletes the temporary keychain; error paths attempt both operations. Hosted-runner teardown is the final boundary for abrupt termination.
+
+Credential-free tests cover import failure, invalid exports, both authentication methods, secret-safe error messages, cleanup failures, wrong teams and unowned directories. Native CI also creates/removes a real **empty** temporary keychain and verifies search-list restoration. These tests do not establish that actual Developer ID credentials or notarization work: neither has been exercised against Apple.
+
+Successful rehearsals write final container hashes to the job summary after stapling; they do not retain binaries. Full parity gates remain mandatory before a separate publication workflow can be introduced. No notarization request has been submitted by this preparation work.
