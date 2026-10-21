@@ -9,6 +9,7 @@ func attr(_ e: AXUIElement, _ key: String) -> CFTypeRef? {
     guard AXUIElementCopyAttributeValue(e,key as CFString,&result) == .success else { return nil }
     return result
 }
+let allow = CommandLine.arguments.dropFirst().first == "allow"
 var seen = Set<String>()
 let deadline = Date().addingTimeInterval(18)
 while Date() < deadline {
@@ -28,11 +29,15 @@ while Date() < deadline {
             let text = labels.joined(separator:" | ")
             if seen.insert(text).inserted { print("CI consent dialog:",text) }
             // CLI children inherit the hosted runner's responsible TCC identity. Deny
-            // only the two observed fixture identities; never grant camera access.
+            // only the two observed fixture identities. Grants require TokenDock itself.
             guard (text.contains("TokenDock") || text.contains("hosted-compute-agent")), text.localizedCaseInsensitiveContains("camera") else { continue }
-            for (label,button) in buttons where label.contains("Don't Allow") || label.contains("Don’t Allow") {
+            if allow && !text.contains("TokenDock") { continue }
+            for (label,button) in buttons {
+                let denyButton = label.contains("Don't Allow") || label.contains("Don’t Allow")
+                let allowButton = label.split(separator:" ").allSatisfy { $0 == "Allow" } && !label.isEmpty
+                guard allow ? allowButton : denyButton else { continue }
                 guard AXUIElementPerformAction(button,kAXPressAction as CFString) == .success else { exit(1) }
-                print("PASS: denied fixture camera through the real consent dialog"); exit(0)
+                print("PASS: \(allow ? "allowed" : "denied") fixture camera through the real consent dialog"); exit(0)
             }
         }
     }
