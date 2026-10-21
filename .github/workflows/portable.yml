@@ -75,19 +75,6 @@ jobs:
               exit "$result"
             fi
           }
-      - name: VoiceOver real last phrase when existing permission allows it
-        if: runner.os == 'macOS'
-        env:
-          TOKENDOCK_TEST_DISPLAY: isolated
-        run: |
-          python3 desktop/native/voiceover-check.py artifacts/desktop/TokenDock.dll || {
-            result=$?
-            if [ "$result" = 77 ]; then
-              echo '::warning::VoiceOver speech remains UNVERIFIED on this runner.'
-            else
-              exit "$result"
-            fi
-          }
       - name: Native X11 clipboard (isolated virtual display)
         if: runner.os == 'Linux'
         env:
@@ -125,6 +112,20 @@ jobs:
         env:
           TOKENDOCK_TEST_DISPLAY: isolated
         run: bash scripts/check-installers.sh "${{ runner.os == 'macOS' && 'osx' || 'linux' }}-${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}"
+      # VoiceOver changes global desktop state; run it after all pointer/focus tests.
+      - name: VoiceOver real last phrase when existing permission allows it
+        if: runner.os == 'macOS'
+        env:
+          TOKENDOCK_TEST_DISPLAY: isolated
+        run: |
+          python3 desktop/native/voiceover-check.py artifacts/desktop/TokenDock.dll || {
+            result=$?
+            if [ "$result" = 77 ]; then
+              echo '::warning::VoiceOver speech remains UNVERIFIED on this runner.'
+            else
+              exit "$result"
+            fi
+          }
       - name: Keep validation evidence
         if: always()
         uses: actions/upload-artifact@v4
