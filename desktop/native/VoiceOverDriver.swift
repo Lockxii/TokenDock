@@ -22,6 +22,21 @@ func key(_ code: Int, _ flags: CGEventFlags) {
     // Command can otherwise contaminate subsequent pointer/drag tests.
     for (modifier,flag) in modifiers.reversed() where flags.contains(flag) { state.remove(flag); post(modifier,false,state,true) }
 }
+func systemKey(_ code: Int, _ modifiers: String) -> Bool {
+    let process = Process(); process.executableURL = URL(fileURLWithPath:"/usr/bin/osascript")
+    process.arguments = ["-e", "tell application \"System Events\" to key code \(code) using {\(modifiers)}"]
+    let output = Pipe(); process.standardError = output; process.standardOutput = output
+    do { try process.run() } catch { return false }
+    let deadline = Date().addingTimeInterval(3)
+    while process.isRunning && Date() < deadline { pause(0.05) }
+    if process.isRunning { process.terminate(); return false }
+    if process.terminationStatus != 0 {
+        let message = String(data:output.fileHandleForReading.readDataToEndOfFile(),encoding:.utf8) ?? ""
+        fputs("System Events keyboard unavailable: \(message)\n",stderr)
+        return false
+    }
+    return true
+}
 func welcomeAction(_ title: String) -> Bool {
     for process in NSWorkspace.shared.runningApplications where (process.bundleIdentifier ?? "").lowercased().contains("voiceover") {
         let app = AXUIElementCreateApplication(process.processIdentifier)
@@ -76,7 +91,7 @@ case "start":
     print("Modifier flags after shortcut:", CGEventSource.flagsState(.combinedSessionState).rawValue)
     print("UNVERIFIED: runner did not enable VoiceOver through its standard shortcut"); exit(77)
 case "stop":
-    if enabled() { key(kVK_F5, .maskCommand) }
+    if enabled() { _ = systemKey(kVK_F5,"command down"); pause(1) }
     for app in NSWorkspace.shared.runningApplications where app.bundleURL?.path == "/System/Library/CoreServices/VoiceOver.app" {
         _ = app.terminate()
         pause(1)
@@ -90,9 +105,9 @@ case "read-focused":
     guard enabled() else { exit(3) }
     // Inject the F4 virtual key directly (Fn is only needed on a physical media-key keyboard).
     // VO-F4 describes keyboard focus; VO-Shift-C copies the actual last phrase.
-    key(kVK_F4, [.maskControl, .maskAlternate]); pause(1.5)
+    guard systemKey(kVK_F4,"control down, option down") else { exit(77) }; pause(1.5)
     let board = NSPasteboard.general; board.clearContents(); let old = board.changeCount
-    key(kVK_ANSI_C, [.maskControl, .maskAlternate, .maskShift])
+    guard systemKey(kVK_ANSI_C,"control down, option down, shift down") else { exit(77) }
     for _ in 0..<30 {
         if board.changeCount != old, let phrase = board.string(forType: .string) { print(phrase); exit(0) }
         pause(0.1)

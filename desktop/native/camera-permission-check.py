@@ -20,6 +20,7 @@ evidence={'status':'UNVERIFIED','devicesOpened':False}
 if result.returncode == 0:
     evidence=json.loads(result.stdout)
     evidence['realDialogDenied']=dialog.returncode == 0
+    evidence['responsibleIdentity']='hosted-compute-agent' if 'hosted-compute-agent' in dialog.stdout else 'TokenDock' if dialog.returncode == 0 else 'not-observed'
     assert evidence['requestCompleted'] and not evidence['devicesOpened']
     assert evidence['after'] in (1,2,3)
     # A second process must observe the same OS decision, not just a callback value.

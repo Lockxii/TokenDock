@@ -27,10 +27,12 @@ while Date() < deadline {
             visit(window,0)
             let text = labels.joined(separator:" | ")
             if seen.insert(text).inserted { print("CI consent dialog:",text) }
-            guard text.localizedCaseInsensitiveContains("TokenDock"), text.localizedCaseInsensitiveContains("camera") else { continue }
+            // CLI children inherit the hosted runner's responsible TCC identity. Deny
+            // only the two observed fixture identities; never grant camera access.
+            guard (text.contains("TokenDock") || text.contains("hosted-compute-agent")), text.localizedCaseInsensitiveContains("camera") else { continue }
             for (label,button) in buttons where label.contains("Don't Allow") || label.contains("Don’t Allow") {
                 guard AXUIElementPerformAction(button,kAXPressAction as CFString) == .success else { exit(1) }
-                print("PASS: denied TokenDock camera through the real consent dialog"); exit(0)
+                print("PASS: denied fixture camera through the real consent dialog"); exit(0)
             }
         }
     }
