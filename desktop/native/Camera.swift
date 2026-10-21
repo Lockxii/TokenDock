@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import CoreVideo
+import AppKit
 
 func fail(_ message: String) -> Never {
     FileHandle.standardError.write(Data((message + "\n").utf8)); exit(1)
@@ -29,21 +30,37 @@ if mode == "--permission-status" {
     exit(0) // Read-only: never requests access, enumerates devices or creates a session.
 }
 // Consent-only CI mode ends before device enumeration/session creation.
-if mode == "--permission-request-check" {
+if mode == "--permission-request-check" || mode == "--permission-status-check" {
     guard ProcessInfo.processInfo.environment["CI"] == "true",
           ProcessInfo.processInfo.environment["TOKENDOCK_TEST_DISPLAY"] == "isolated" else { exit(2) }
+    var report: URL?
+    if CommandLine.arguments.count == 3 {
+        let url = URL(fileURLWithPath:CommandLine.arguments[2]).standardizedFileURL
+        guard url.deletingLastPathComponent().lastPathComponent.hasPrefix("tokendock-consent-"),
+              FileManager.default.fileExists(atPath:url.deletingLastPathComponent().appendingPathComponent("fixture.marker").path),
+              !FileManager.default.fileExists(atPath:url.path) else { exit(2) }
+        report = url
+        NSApplication.shared.setActivationPolicy(.accessory)
+        NSApplication.shared.finishLaunching()
+    }
+    func emit(_ result: [String:Any]) {
+        let data = try! JSONSerialization.data(withJSONObject:result,options:[.sortedKeys])
+        if let report = report { do { try data.write(to:report,options:.atomic) } catch { fail("Cannot write consent evidence") } }
+        else { print(String(data:data,encoding:.utf8)!) }
+    }
     let before = AVCaptureDevice.authorizationStatus(for: .video)
+    if mode == "--permission-status-check" { emit(["after":before.rawValue,"devicesOpened":false]); exit(0) }
     let permission = DispatchSemaphore(value: 0)
     var allowed = false
     AVCaptureDevice.requestAccess(for: .video) { value in allowed = value; permission.signal() }
     guard permission.wait(timeout: .now() + 25) == .success else {
-        print("UNVERIFIED: camera consent needs an interactive response"); exit(77)
+        emit(["status":"UNVERIFIED","reason":"Camera consent needs an interactive response","devicesOpened":false]); exit(77)
     }
     let after = AVCaptureDevice.authorizationStatus(for: .video)
     guard allowed == (after == .authorized), after != .notDetermined else { fail("Inconsistent camera authorization response") }
     let result: [String: Any] = ["before": before.rawValue, "after": after.rawValue,
         "granted": allowed, "devicesOpened": false, "requestCompleted": true]
-    print(String(data: try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]), encoding: .utf8)!)
+    emit(result)
     exit(0)
 }
 guard CommandLine.arguments.count == 2, mode == "--capture" else { exit(2) }

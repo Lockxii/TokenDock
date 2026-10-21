@@ -50,6 +50,7 @@ else
     codesign --verify --deep --strict /Applications/TokenDock.app
     /Applications/TokenDock.app/Contents/MacOS/TokenDock --check "$out/$attempt-checks"
     if [[ "$attempt" == installed ]]; then
+      python3 desktop/native/installed-camera-permission-check.py
       /Applications/TokenDock.app/Contents/MacOS/TokenDock --native-clipboard-check
       python3 desktop/native/mac-media-check.py /Applications/TokenDock.app/Contents/MacOS/TokenDock
       python3 desktop/native/accessibility-check.py /Applications/TokenDock.app/Contents/MacOS/TokenDock || {

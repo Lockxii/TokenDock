@@ -135,6 +135,7 @@ jobs:
             artifacts/performance.json
             artifacts/permissions.json
             artifacts/camera-consent.json
+            artifacts/camera-consent-installed.json
   core:
     strategy:
       fail-fast: false
