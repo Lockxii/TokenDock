@@ -38,7 +38,7 @@ func systemKey(_ code: Int, _ modifiers: String) -> Bool {
     return true
 }
 func welcomeAction(_ title: String) -> Bool {
-    for process in NSWorkspace.shared.runningApplications where (process.bundleIdentifier ?? "").lowercased().contains("voiceover") {
+    for process in NSWorkspace.shared.runningApplications where (process.bundleIdentifier ?? "").lowercased().contains("voiceover") || (process.bundleIdentifier ?? "").lowercased().contains("screenreader") {
         let app = AXUIElementCreateApplication(process.processIdentifier)
         AXUIElementSetMessagingTimeout(app, 1)
         var count = 0
@@ -51,7 +51,11 @@ func welcomeAction(_ title: String) -> Bool {
             }
             let role = attribute(kAXRoleAttribute) as? String ?? ""
             if role == "AXMenuBar" { return false }
-            if role == "AXButton", (attribute(kAXTitleAttribute) as? String) == title {
+            let labels = [kAXTitleAttribute,kAXDescriptionAttribute,kAXValueAttribute].compactMap { attribute($0) as? String }
+            if title == "__diagnostic__", !labels.isEmpty {
+                fputs("VoiceOver UI \(role): \(labels.joined(separator:" | "))\n",stderr)
+            }
+            if role == "AXButton", labels.contains(title) {
                 return AXUIElementPerformAction(element, kAXPressAction as CFString) == .success
             }
             for child in attribute(kAXChildrenAttribute) as? [AXUIElement] ?? [] {
@@ -65,6 +69,20 @@ func welcomeAction(_ title: String) -> Bool {
 }
 func enabled() -> Bool { NSWorkspace.shared.isVoiceOverEnabled }
 switch CommandLine.arguments[1] {
+case "reference":
+    // Independent native control: distinguishes runner transport from Avalonia.
+    let app = NSApplication.shared
+    app.setActivationPolicy(.regular)
+    let window = NSWindow(contentRect:NSRect(x:160,y:160,width:380,height:120),styleMask:[.titled,.closable],backing:.buffered,defer:false)
+    window.title = "TokenDock reader reference"
+    let field = NSTextField(frame:NSRect(x:20,y:35,width:340,height:30))
+    field.stringValue = "TokenDock VoiceOver reference"
+    window.contentView?.addSubview(field)
+    DispatchQueue.main.async {
+        window.makeKeyAndOrderFront(nil); app.activate(ignoringOtherApps:true)
+        window.makeFirstResponder(field)
+    }
+    app.run()
 case "preflight":
     if NSWorkspace.shared.runningApplications.contains(where: { ($0.bundleIdentifier ?? "").lowercased().contains("voiceover") }) { print("UNVERIFIED: existing VoiceOver process preserved"); exit(77) }
     if enabled() { print("UNVERIFIED: VoiceOver already enabled; preserve runner state"); exit(77) }
@@ -112,6 +130,7 @@ case "read-focused":
         if board.changeCount != old, let phrase = board.string(forType: .string) { print(phrase); exit(0) }
         pause(0.1)
     }
+    _ = welcomeAction("__diagnostic__")
     exit(3)
 default: exit(2)
 }
