@@ -76,22 +76,21 @@ case "start":
     print("Modifier flags after shortcut:", CGEventSource.flagsState(.combinedSessionState).rawValue)
     print("UNVERIFIED: runner did not enable VoiceOver through its standard shortcut"); exit(77)
 case "stop":
-    _ = welcomeAction("Turn Off VoiceOver")
     if enabled() { key(kVK_F5, .maskCommand) }
-    // Only reached after preflight confirmed no pre-existing reader process.
     for app in NSWorkspace.shared.runningApplications where app.bundleURL?.path == "/System/Library/CoreServices/VoiceOver.app" {
         _ = app.terminate()
+        pause(1)
+        if !app.isTerminated { _ = app.forceTerminate() }
     }
-    pause(0.5)
-    for _ in 0..<100 {
-        _ = welcomeAction("Turn Off VoiceOver")
+    for _ in 0..<50 {
         if !enabled() { NSPasteboard.general.clearContents(); exit(0) }; pause(0.1)
     }
     fputs("VoiceOver teardown failed\n", stderr); exit(1)
 case "read-focused":
     guard enabled() else { exit(3) }
-    // VO-Fn-F4 describes keyboard focus; VO-Shift-C copies the actual last phrase.
-    key(kVK_F4, [.maskControl, .maskAlternate, .maskSecondaryFn]); pause(0.7)
+    // Inject the F4 virtual key directly (Fn is only needed on a physical media-key keyboard).
+    // VO-F4 describes keyboard focus; VO-Shift-C copies the actual last phrase.
+    key(kVK_F4, [.maskControl, .maskAlternate]); pause(1.5)
     let board = NSPasteboard.general; board.clearContents(); let old = board.changeCount
     key(kVK_ANSI_C, [.maskControl, .maskAlternate, .maskShift])
     for _ in 0..<30 {

@@ -8,9 +8,9 @@ subprocess.run(['swiftc',str(root/'VoiceOverDriver.swift'),'-o',str(helper),'-fr
 preflight=subprocess.run([str(helper),'preflight'])
 if preflight.returncode: raise SystemExit(preflight.returncode)
 try:
-    started=subprocess.run([str(helper),'start'])
+    started=subprocess.run([str(helper),'start'],timeout=60)
     if started.returncode: raise SystemExit(started.returncode)
     env=dict(os.environ,TOKENDOCK_VOICEOVER_DRIVER=str(helper))
     subprocess.run(['python3',str(root/'accessibility-check.py'),sys.argv[1]],env=env,check=True,timeout=180)
 finally:
-    subprocess.run([str(helper),'stop'],check=True,timeout=15)
+    subprocess.run([str(helper),'stop'],check=True,timeout=30)

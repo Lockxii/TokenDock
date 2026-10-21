@@ -72,9 +72,13 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
         def spoken(name):
             voiceover = os.environ.get('TOKENDOCK_VOICEOVER_DRIVER')
             if voiceover:
-                tree(focus=name)
+                until(lambda: tree(focus=name), f'Native focus request failed for {name}')
+                last_phrase = []
                 def announced_by_voiceover():
                     result = subprocess.run([voiceover,'read-focused'],capture_output=True,text=True,timeout=8)
+                    phrase = (result.returncode, result.stdout.strip(), result.stderr.strip())
+                    if not last_phrase or last_phrase[-1] != phrase:
+                        print('VoiceOver diagnostic:', repr(phrase), flush=True); last_phrase.append(phrase)
                     return result.returncode == 0 and name in result.stdout
                 until(announced_by_voiceover, f'VoiceOver did not announce {name}')
                 print(f'PASS: VoiceOver actual last phrase contains {name}', flush=True)
