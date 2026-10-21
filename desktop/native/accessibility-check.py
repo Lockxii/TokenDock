@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='tokendock-a11y-') as directory:
                 until(lambda: tree(focus=name), f'Native focus request failed for {name}')
                 last_phrase = []
                 def announced_by_voiceover():
-                    result = subprocess.run([voiceover,'read-focused'],capture_output=True,text=True,timeout=8)
+                    result = subprocess.run([voiceover,'read-focused'],capture_output=True,text=True,timeout=15)
                     phrase = (result.returncode, result.stdout.strip(), result.stderr.strip())
                     if not last_phrase or last_phrase[-1] != phrase:
                         print('VoiceOver diagnostic:', repr(phrase), flush=True); last_phrase.append(phrase)

@@ -126,6 +126,7 @@ jobs:
           TOKENDOCK_TEST_DISPLAY: isolated
         run: bash scripts/check-installers.sh "${{ runner.os == 'macOS' && 'osx' || 'linux' }}-${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}"
       - name: Keep validation evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: desktop-renders-${{ matrix.os }}
