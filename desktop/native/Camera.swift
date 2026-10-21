@@ -28,6 +28,24 @@ if mode == "--permission-status" {
     print([AVAuthorizationStatus.notDetermined: "not-determined", .authorized: "authorized", .denied: "denied", .restricted: "restricted"][status] ?? "unknown")
     exit(0) // Read-only: never requests access, enumerates devices or creates a session.
 }
+// Consent-only CI mode ends before device enumeration/session creation.
+if mode == "--permission-request-check" {
+    guard ProcessInfo.processInfo.environment["CI"] == "true",
+          ProcessInfo.processInfo.environment["TOKENDOCK_TEST_DISPLAY"] == "isolated" else { exit(2) }
+    let before = AVCaptureDevice.authorizationStatus(for: .video)
+    let permission = DispatchSemaphore(value: 0)
+    var allowed = false
+    AVCaptureDevice.requestAccess(for: .video) { value in allowed = value; permission.signal() }
+    guard permission.wait(timeout: .now() + 25) == .success else {
+        print("UNVERIFIED: camera consent needs an interactive response"); exit(77)
+    }
+    let after = AVCaptureDevice.authorizationStatus(for: .video)
+    guard allowed == (after == .authorized), after != .notDetermined else { fail("Inconsistent camera authorization response") }
+    let result: [String: Any] = ["before": before.rawValue, "after": after.rawValue,
+        "granted": allowed, "devicesOpened": false, "requestCompleted": true]
+    print(String(data: try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]), encoding: .utf8)!)
+    exit(0)
+}
 guard CommandLine.arguments.count == 2, mode == "--capture" else { exit(2) }
 let status = AVCaptureDevice.authorizationStatus(for: .video)
 if let error = permissionError(status) { fail(error) }

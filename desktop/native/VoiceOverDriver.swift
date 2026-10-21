@@ -51,6 +51,7 @@ func welcomeAction(_ title: String) -> Bool {
 func enabled() -> Bool { NSWorkspace.shared.isVoiceOverEnabled }
 switch CommandLine.arguments[1] {
 case "preflight":
+    if NSWorkspace.shared.runningApplications.contains(where: { ($0.bundleIdentifier ?? "").lowercased().contains("voiceover") }) { print("UNVERIFIED: existing VoiceOver process preserved"); exit(77) }
     if enabled() { print("UNVERIFIED: VoiceOver already enabled; preserve runner state"); exit(77) }
 case "start":
     guard !enabled() else { exit(77) }
@@ -59,12 +60,28 @@ case "start":
         if welcomeAction("Use VoiceOver") { print("Accepted the standard VoiceOver welcome dialog"); pause(0.5) }
         if enabled() { exit(0) }; pause(0.1)
     }
+    // LaunchServices fallback: use the installed Apple application, not TCC edits.
+    let voiceOverURL = URL(fileURLWithPath: "/System/Library/CoreServices/VoiceOver.app")
+    if FileManager.default.fileExists(atPath: voiceOverURL.path) {
+        NSWorkspace.shared.openApplication(at: voiceOverURL, configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            if let error = error { print("VoiceOver launch error:", error.localizedDescription) }
+        }
+        for _ in 0..<100 {
+            _ = welcomeAction("Use VoiceOver")
+            if enabled() { print("VoiceOver enabled through LaunchServices"); exit(0) }
+            pause(0.1)
+        }
+    }
     print("VoiceOver processes:", NSWorkspace.shared.runningApplications.filter { ($0.bundleIdentifier ?? "").lowercased().contains("voiceover") }.map { $0.bundleIdentifier ?? "" })
     print("Modifier flags after shortcut:", CGEventSource.flagsState(.combinedSessionState).rawValue)
     print("UNVERIFIED: runner did not enable VoiceOver through its standard shortcut"); exit(77)
 case "stop":
     _ = welcomeAction("Turn Off VoiceOver")
     if enabled() { key(kVK_F5, .maskCommand) }
+    // Only reached after preflight confirmed no pre-existing reader process.
+    for app in NSWorkspace.shared.runningApplications where app.bundleURL?.path == "/System/Library/CoreServices/VoiceOver.app" {
+        _ = app.terminate()
+    }
     pause(0.5)
     for _ in 0..<100 {
         _ = welcomeAction("Turn Off VoiceOver")
