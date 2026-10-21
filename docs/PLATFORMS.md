@@ -2,7 +2,7 @@
 
 **No supported Linux/macOS application release yet.** The executable [Avalonia port](../desktop/README.md) now includes the dock, music, Clipboard/file shelf, RAM and native camera helpers. Shared-core and desktop/native fixture checks run on Linux/macOS. Real-world validation and the remaining coverage gaps below still prevent publication.
 
-The owner requires full parity before publication. A token-only prototype, web mockup or compatibility-layer build does not qualify.
+The owner requires full parity before a supported application release. A token-only prototype, web mockup or compatibility-layer build does not qualify. Developers/testers can use the [local source installation guide](../README.md#macos--linux-install-with-your-ai-agent). Developer ID signing and notarization are not planned for this route; the local ad-hoc signature does not establish Apple trust. Functional validation gates remain in effect.
 
 ## Dependencies to replace
 
@@ -24,7 +24,7 @@ Avalonia replaces WPF/window/tray/clipboard integration in the port. Linux uses 
 | Photos | Round alpha PNG, auto-open Clipboard, export | Same |
 | Privacy | Capture released on hide/close/switch/races | Same, including denied permission |
 | Motion/accessibility | Retargeting, reduced motion, keyboard, labels | Same |
-| Distribution | Installable artifacts and notices | Architectures, signing/notarization, packaging |
+| Distribution | Installable artifacts and notices | Architectures, development packaging, explicit unsigned status |
 
 Wayland may restrict positioning. Resolve or explicitly agree limitations before claiming full parity.
 
@@ -57,8 +57,9 @@ third-party destination applications remain distinct compatibility checks.
 Development packaging now includes Debian packages, portable Linux archives, macOS
 DMGs and PKGs. CI installs/reinstalls/removes its own packages and runs the synthetic
 app checks from installed and mounted artifacts. This verifies packaging mechanics,
-not Gatekeeper trust: Developer ID signing, notarization and real clean-user startup
-remain release gates. There is still no release/upload step for these binaries.
+not Gatekeeper trust. Developer ID signing and notarization are outside the current
+source-installation route; real clean-user startup remains a validation gate.
+There is still no release/upload step for these binaries.
 
 ## Native accessibility and permission checks
 

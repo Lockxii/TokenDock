@@ -1,5 +1,7 @@
 # Modify TokenDock with an AI assistant
 
+For macOS/Linux installation, use the [copyable agent request](../README.md#macos--linux-install-with-your-ai-agent). It targets the native development branch, builds without Apple Developer credentials and explicitly records remaining local validation. The Windows customization workflow follows.
+
 ## 1. Prepare a workspace
 
 Install Git and the .NET 10 SDK on Windows, then clone and branch:

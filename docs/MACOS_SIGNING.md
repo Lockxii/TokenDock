@@ -1,5 +1,7 @@
 # macOS signing and notarization
 
+> Optional future reference only. The owner has chosen local source installation without Developer ID signing or notarization. No certificates or signing secrets are needed for that route. Keep the signing workflow disabled. Use the [README agent installation guide](../README.md#macos--linux-install-with-your-ai-agent).
+
 Status: prepared, not distribution-validated. Ordinary native CI signs development bundles ad hoc with hardened runtime and executes their checks. It does not have Developer ID certificates, submit to Apple, or publish installers. Full product parity remains required even after signing succeeds.
 
 ## Required on the signing Mac
