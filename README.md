@@ -33,10 +33,10 @@ A native **C# / WPF / .NET 10** desktop app with no embedded browser. Dock it to
 | Platform | Status |
 | --- | --- |
 | Windows 10 2004+ / Windows 11, x64 | Available; self-contained download |
-| Linux | Not available; full feature parity required before release |
-| macOS | Not available; full feature parity required before release |
+| Linux | Source installation for developers/testers; no supported release yet |
+| macOS | Local source installation, no Developer ID/notarization; no supported release yet |
 
-**The current app is Windows-only.** WPF, media and capture integrations need a real port. A token-only prototype will not be presented as a complete release. See the [Linux/macOS parity requirements](docs/PLATFORMS.md). No Linux/macOS binaries are available yet.
+**The released app is Windows-only.** The native Linux/macOS port is available on [`feat/native-port`](https://github.com/Lockxii/TokenDock/tree/feat/native-port) for local source installation and testing. See the agent installation instructions below and the [current validation checklist](https://github.com/Lockxii/TokenDock/blob/feat/native-port/docs/PLATFORMS.md). No supported Linux/macOS release binaries are available yet.
 
 ## Contents
 
@@ -71,6 +71,58 @@ Get-FileHash .\TokenDock-v0.2.0-win-x64.zip -Algorithm SHA256
 ```
 
 Compare the hash with `SHA256SUMS.txt`.
+
+### macOS / Linux: install with your AI agent
+
+**For developers and early testers.** A coding agent on your own Mac or Linux machine can build and install the native port and help finish local validation. This is a development installation, **not a fully validated release**. Use the [`feat/native-port` branch](https://github.com/Lockxii/TokenDock/tree/feat/native-port), not the default branch.
+
+**No Apple Developer ID signing or notarization is planned for this installation route.** No Apple Developer subscription or certificates are needed. The packaging script applies a local ad-hoc signature for the development bundle; it does not certify the publisher or establish Apple trust.
+
+Copy this into Codex, Claude Code, OpenCode or another agent with local terminal access:
+
+```text
+Install TokenDock from source on this computer and help finish local validation.
+Clone https://github.com/Lockxii/TokenDock.git using branch feat/native-port into
+a new workspace. Record the commit SHA. Read AGENTS.md, README.md,
+desktop/README.md and docs/PLATFORMS.md. Detect my OS and CPU architecture.
+
+Check and install the documented dependencies, respecting local permission
+prompts. Build the native app and helpers, run synthetic --check tests, then
+create the matching bundle using scripts/package-native.sh. Do not configure
+Apple signing credentials or submit to Apple. Preserve any existing app,
+settings and files. Install the successful build locally and give its exact
+location, launch instructions and removal instructions.
+
+Fix reproducible build/integration problems with minimal changes and rerun
+relevant checks. Do not stop at a plan. Never run disposable-CI installer,
+permission or desktop-automation tests on my personal machine, or spoof their
+CI flags. Preserve OS security and privacy protections.
+
+Guide me through manual checks of music, Clipboard/file drag-and-drop, camera
+shutdown, screen readers, docking and multiple displays. Let me handle privacy
+prompts and real camera/clipboard tests. Use synthetic data for automated tests;
+do not inspect personal clipboard content or conversations. Report passing,
+failed and unperformed checks separately, plus changes and remaining limits.
+Do not claim full parity, push changes or publish a release.
+```
+
+Requirements: Git, .NET 10 SDK and the dependencies in the [native build guide](https://github.com/Lockxii/TokenDock/blob/feat/native-port/desktop/README.md). macOS targets **15 or newer**, with Xcode Command Line Tools and CMake. Linux CI covers Ubuntu 24.04 x64/ARM64; other distributions need local verification.
+
+To start manually after installing those dependencies:
+
+```sh
+git clone --branch feat/native-port --single-branch https://github.com/Lockxii/TokenDock.git
+cd TokenDock
+dotnet publish desktop -c Release --no-self-contained -o artifacts/desktop
+bash desktop/native/build.sh artifacts/desktop
+dotnet artifacts/desktop/TokenDock.dll --check artifacts/desktop-renders
+# Apple Silicon; use osx-x64 on Intel, linux-x64/linux-arm64 on Linux:
+bash scripts/package-native.sh osx-arm64
+```
+
+On Apple Silicon, the app is at `artifacts/native-osx-arm64/TokenDock.app`; on Intel, use `native-osx-x64`. Development DMG/PKG containers are also generated. Copy the app into your Applications folder after checking for an existing installation. Installers do not automatically launch it. Review any macOS warning before deciding whether to allow this specific app; an agent cannot approve privacy dialogs on your behalf.
+
+**Still to verify locally:** physical camera capture/shutdown, your music players, Finder/file-manager drops, display behavior and screen-reader usability. CI exercised synthetic integrations and actual macOS camera consent decisions without opening a device; VoiceOver speech remains unverified. Follow the [validation checklist](https://github.com/Lockxii/TokenDock/blob/feat/native-port/docs/PLATFORMS.md), and report reproducible issues without photos, clipboard data or secrets.
 
 ### Update or uninstall
 
